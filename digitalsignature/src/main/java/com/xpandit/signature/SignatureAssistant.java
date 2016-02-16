@@ -280,7 +280,7 @@ public class SignatureAssistant {
         firstBlock.setBorder(Rectangle.NO_BORDER);
         firstBlock.setFixedHeight(28);
 
-        // FIRST BLOCK : LABEL
+        // LABEL
         Paragraph firstBlockLabel = new Paragraph();
         Chunk firstBlockLabelText = new Chunk("Este documento foi assinado por:");
         firstBlockLabelText.setFont(layer2Font_Discrete);
@@ -289,7 +289,7 @@ public class SignatureAssistant {
         firstBlockLabel.add(firstBlockLabelText);
         firstBlock.addElement(firstBlockLabel);
 
-        // FIRST BLOCK : NAME
+        // NAME
         Paragraph firstBlockName = new Paragraph();
         Chunk firstBlockNameText;
         if (cnStr.length() > 30) {
@@ -315,7 +315,7 @@ public class SignatureAssistant {
         PdfPCell secondBlock = new PdfPCell();
         secondBlock.setBorder(Rectangle.NO_BORDER);
 
-        // SECOND BLOCK : CC NUMBER
+        // CC NUMBER
         String ccNumber = "" + serialNumberStr.substring(2);
         if (customCCNumber != null && !customCCNumber.isEmpty()) {
             ccNumber = customCCNumber;
@@ -331,7 +331,7 @@ public class SignatureAssistant {
         secondBlockLabelAndCitizenCard.setSpacingAfter(2);
         secondBlock.addElement(secondBlockLabelAndCitizenCard);
 
-        // SECOND BLOCK : DATE
+        // DATE
         Paragraph secondBlockDate = new Paragraph();
         Chunk dateLabel = new Chunk("Data: ");
         dateLabel.setFont(layer2Font_Discrete);
@@ -394,6 +394,9 @@ public class SignatureAssistant {
         car.setTime(date);
 
         byte[] ocsp = null;
+        if (chain.length >= 2 && ocspClient != null) {
+            ocsp = ocspClient.getEncoded();
+        }
         sdd.setHash(hash);
         sdd.setCar(car);
         sdd.setTsaClient(tsaClient);
@@ -433,7 +436,7 @@ public class SignatureAssistant {
         @Override
         protected String doInBackground(byte[]... params) {
             sdd.getSgn().setExternalDigest(data, null, sdd.getExternalSignature().getEncryptionAlgorithm());
-            byte[] encodedSig = sdd.getSgn().getEncodedPKCS7(sdd.getHash(), sdd.getCar(), sdd.getTsaClient(), sdd.getOcsp());//, this_crlBytes, this_sigtype);
+            byte[] encodedSig = sdd.getSgn().getEncodedPKCS7(sdd.getHash(), sdd.getCar(), sdd.getTsaClient(), sdd.getOcsp());
             if (sdd.getEstimatedSize() < encodedSig.length) {
                 try {
                     throw new IOException("Not enough space");
@@ -473,6 +476,7 @@ public class SignatureAssistant {
                 sai.finishDigitalSignatureProcess("success");
             }
         }
+
     }
 
     public static byte[] digest(InputStream data, MessageDigest messageDigest) throws GeneralSecurityException, IOException {
