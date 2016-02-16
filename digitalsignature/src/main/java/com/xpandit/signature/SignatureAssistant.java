@@ -94,40 +94,43 @@ public class SignatureAssistant {
         AcroFields form = reader.getAcroFields();
         // Loop over the fields and get info about them
         Set<String> fields = form.getFields().keySet();
-
-        for (String key : fields) {
-            switch (form.getFieldType(key)) {
-                case AcroFields.FIELD_TYPE_SIGNATURE:
-                    if (form.getFieldPositions(signatureName).length > 0) {
-                        float[] sigData = form.getFieldPositions(signatureName);
-                        page = (int) sigData[0];
-                        llx = sigData[1];
-                        lly = sigData[2];
-                        urx = sigData[3];
-                        ury = sigData[4];
-                        Rectangle rect = reader.getPageSize(page);
-                        pageWidth = rect.getWidth();
-                        pageHeight = rect.getHeight();
-                    } else {
-                        return null;
-                    }
-                    break;
-                default:
-                    break;
+        if(!fields.isEmpty()){
+            for (String key : fields) {
+                switch (form.getFieldType(key)) {
+                    case AcroFields.FIELD_TYPE_SIGNATURE:
+                        if (form.getFieldPositions(signatureName).length > 0) {
+                            float[] sigData = form.getFieldPositions(signatureName);
+                            page = (int) sigData[0];
+                            llx = sigData[1];
+                            lly = sigData[2];
+                            urx = sigData[3];
+                            ury = sigData[4];
+                            Rectangle rect = reader.getPageSize(page);
+                            pageWidth = rect.getWidth();
+                            pageHeight = rect.getHeight();
+                        } else {
+                            return null;
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
-        }
-        reader.close();
-        SignatureData sd = new SignatureData();
-        sd.setSignatureName(signatureName);
-        sd.setPage(page);
-        sd.setPageWidth((int) pageWidth);
-        sd.setPageHeight((int) pageHeight);
-        sd.setLeft(llx);
-        sd.setDown(lly);
-        sd.setRight(urx);
-        sd.setUp(ury);
 
-        return sd;
+            reader.close();
+            SignatureData sd = new SignatureData();
+            sd.setSignatureName(signatureName);
+            sd.setPage(page);
+            sd.setPageWidth((int) pageWidth);
+            sd.setPageHeight((int) pageHeight);
+            sd.setLeft(llx);
+            sd.setDown(lly);
+            sd.setRight(urx);
+            sd.setUp(ury);
+            return sd;
+        }
+
+        return null;
     }
 
     /**
