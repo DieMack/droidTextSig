@@ -79,8 +79,7 @@ public class SignatureAssistant {
     private static SignatureDetachedData sdd = new SignatureDetachedData();
 
     /**
-     *
-     * @param fileName - The (pdf) that contains the signature fields
+     * @param fileName - The pdf file that contains the signature fields
      * @return
      * @throws IOException
      */
@@ -92,7 +91,40 @@ public class SignatureAssistant {
         for (String fldName : fldNames) {
             signatureFieldNames.add(fldName);
         }
+        reader.close();
         return signatureFieldNames;
+    }
+
+    /**
+     * @param fileName - The file that contains the signature fields
+     * @return
+     * @throws IOException
+     */
+    public static ArrayList<String> getAllUnsignedSignatureFieldsNames(String fileName) throws IOException {
+        PdfReader reader = new PdfReader(fileName);
+        AcroFields fields = reader.getAcroFields();
+        ArrayList<String> blankSignatureFields = new ArrayList<>();
+        for (Object o : fields.getBlankSignatureNames()) {
+            blankSignatureFields.add(String.valueOf(o));
+        }
+        reader.close();
+        return blankSignatureFields;
+    }
+
+    /**
+     * @param fileName - The file that contains the signature fields
+     * @return
+     * @throws IOException
+     */
+    public static ArrayList<String> getAllSignedSignatureFieldNames(String fileName) throws IOException {
+        ArrayList<String> allSignatureFields = getAllSignatureFieldNames(fileName);
+        ArrayList<String> blankSignatureFields = getAllUnsignedSignatureFieldsNames(fileName);
+        for (String s : blankSignatureFields) {
+            if (allSignatureFields.contains(s)) {
+                allSignatureFields.remove(s);
+            }
+        }
+        return allSignatureFields;
     }
 
     /**
@@ -112,7 +144,7 @@ public class SignatureAssistant {
         AcroFields form = reader.getAcroFields();
         // Loop over the fields and get info about them
         Set<String> fields = form.getFields().keySet();
-        if(!fields.isEmpty()){
+        if (!fields.isEmpty()) {
             for (String key : fields) {
                 switch (form.getFieldType(key)) {
                     case AcroFields.FIELD_TYPE_SIGNATURE:
@@ -254,7 +286,7 @@ public class SignatureAssistant {
                                                       Image img,
                                                       SignatureUtils.MyExternalSignature eid,
                                                       SignatureUtils.MyExternalDigest digest) throws GeneralSecurityException, IOException, DocumentException {
-        
+
         X500Name x500name = new JcaX509CertificateHolder((X509Certificate) chain[0]).getSubject();
         RDN cn = x500name.getRDNs(BCStyle.CN)[0];
         String cnStr = IETFUtils.valueToString(cn.getFirst().getValue());
@@ -378,15 +410,15 @@ public class SignatureAssistant {
 
 
     public static SignatureDetachedData signDetached(PdfSignatureAppearance sap,
-                                    SignatureUtils.MyExternalDigest myExternalDigest,
-                                    SignatureUtils.MyExternalSignature externalSignature,
-                                    Certificate[] chain,
-                                    OcspClient ocspClient,
-                                    TSAClient tsaClient,
-                                    int estimatedSize,
-                                    PdfReader reader,
-                                    FileOutputStream os,
-                                    PdfStamper stamper) throws IOException, DocumentException, GeneralSecurityException {
+                                                     SignatureUtils.MyExternalDigest myExternalDigest,
+                                                     SignatureUtils.MyExternalSignature externalSignature,
+                                                     Certificate[] chain,
+                                                     OcspClient ocspClient,
+                                                     TSAClient tsaClient,
+                                                     int estimatedSize,
+                                                     PdfReader reader,
+                                                     FileOutputStream os,
+                                                     PdfStamper stamper) throws IOException, DocumentException, GeneralSecurityException {
         if (estimatedSize == 0) {
             estimatedSize = 8192;
             if (ocspClient != null) {
