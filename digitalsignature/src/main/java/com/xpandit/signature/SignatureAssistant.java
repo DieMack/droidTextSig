@@ -83,16 +83,20 @@ public class SignatureAssistant {
      * @return
      * @throws IOException
      */
-    public static ArrayList<String> getAllSignatureFieldNames(String fileName) throws IOException {
-        PdfReader reader = new PdfReader(fileName);
-        AcroFields fields = reader.getAcroFields();
-        Set<String> fldNames = fields.getFields().keySet();
-        ArrayList<String> signatureFieldNames = new ArrayList<>();
-        for (String fldName : fldNames) {
-            signatureFieldNames.add(fldName);
+    public static ArrayList<String> getAllSignatureFieldNames(String fileName) {
+        try {
+            PdfReader reader = new PdfReader(fileName);
+            AcroFields fields = reader.getAcroFields();
+            Set<String> fldNames = fields.getFields().keySet();
+            ArrayList<String> signatureFieldNames = new ArrayList<>();
+            for (String fldName : fldNames) {
+                signatureFieldNames.add(fldName);
+            }
+            reader.close();
+            return signatureFieldNames;
+        } catch (Exception e) {
+            return null;
         }
-        reader.close();
-        return signatureFieldNames;
     }
 
     /**
@@ -101,14 +105,18 @@ public class SignatureAssistant {
      * @throws IOException
      */
     public static ArrayList<String> getAllUnsignedSignatureFieldsNames(String fileName) throws IOException {
-        PdfReader reader = new PdfReader(fileName);
-        AcroFields fields = reader.getAcroFields();
-        ArrayList<String> blankSignatureFields = new ArrayList<>();
-        for (Object o : fields.getBlankSignatureNames()) {
-            blankSignatureFields.add(String.valueOf(o));
+        try {
+            PdfReader reader = new PdfReader(fileName);
+            AcroFields fields = reader.getAcroFields();
+            ArrayList<String> blankSignatureFields = new ArrayList<>();
+            for (Object o : fields.getBlankSignatureNames()) {
+                blankSignatureFields.add(String.valueOf(o));
+            }
+            reader.close();
+            return blankSignatureFields;
+        } catch (Exception e) {
+            return null;
         }
-        reader.close();
-        return blankSignatureFields;
     }
 
     /**
@@ -117,14 +125,22 @@ public class SignatureAssistant {
      * @throws IOException
      */
     public static ArrayList<String> getAllSignedSignatureFieldNames(String fileName) throws IOException {
-        ArrayList<String> allSignatureFields = getAllSignatureFieldNames(fileName);
-        ArrayList<String> blankSignatureFields = getAllUnsignedSignatureFieldsNames(fileName);
-        for (String s : blankSignatureFields) {
-            if (allSignatureFields.contains(s)) {
-                allSignatureFields.remove(s);
+        try {
+            ArrayList<String> allSignatureFields = getAllSignatureFieldNames(fileName);
+            ArrayList<String> blankSignatureFields = getAllUnsignedSignatureFieldsNames(fileName);
+            if (blankSignatureFields == null)
+                return allSignatureFields;
+            else {
+                for (String s : blankSignatureFields) {
+                    if (allSignatureFields!=null && allSignatureFields.contains(s)) {
+                        allSignatureFields.remove(s);
+                    }
+                }
+                return allSignatureFields;
             }
+        } catch (Exception e) {
+            return null;
         }
-        return allSignatureFields;
     }
 
     /**
