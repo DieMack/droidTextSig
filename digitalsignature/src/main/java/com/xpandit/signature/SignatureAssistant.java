@@ -46,6 +46,7 @@ import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -76,6 +77,23 @@ public class SignatureAssistant {
     private static Font layer2Font_Discrete = new Font(Font.HELVETICA, fontSize, Font.NORMAL);
     private static SimpleDateFormat sdf_visibleSignature = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private static SignatureDetachedData sdd = new SignatureDetachedData();
+
+    /**
+     *
+     * @param fileName - The (pdf) that contains the signature fields
+     * @return
+     * @throws IOException
+     */
+    public static ArrayList<String> getAllSignatureFieldNames(String fileName) throws IOException {
+        PdfReader reader = new PdfReader(fileName);
+        AcroFields fields = reader.getAcroFields();
+        Set<String> fldNames = fields.getFields().keySet();
+        ArrayList<String> signatureFieldNames = new ArrayList<>();
+        for (String fldName : fldNames) {
+            signatureFieldNames.add(fldName);
+        }
+        return signatureFieldNames;
+    }
 
     /**
      * getFormFieldPositions - Return the SignatureData for a given signatureName
