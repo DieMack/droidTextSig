@@ -1,4 +1,4 @@
-package enumerators;
+package com.xpandit.enumerators;
 
 /**
  * Description

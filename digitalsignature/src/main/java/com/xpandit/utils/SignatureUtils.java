@@ -1,4 +1,4 @@
-package utils;
+package com.xpandit.utils;
 
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;

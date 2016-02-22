@@ -1,4 +1,4 @@
-package datastructures;
+package com.xpandit.datastructures;
 
 import java.io.Serializable;
 

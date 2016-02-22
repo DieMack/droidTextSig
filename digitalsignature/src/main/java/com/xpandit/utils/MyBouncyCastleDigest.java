@@ -1,4 +1,4 @@
-package utils;
+package com.xpandit.utils;
 
 import org.spongycastle.jcajce.provider.digest.MD2;
 

@@ -1,5 +1,4 @@
-package utils;
-
+package com.xpandit.utils;
 /**
  * Description
  *
@@ -34,7 +33,7 @@ public class DigestAlgorithms {
     }
 
     public static MessageDigest getMessageDigest(String hashAlgorithm, String provider) throws NoSuchAlgorithmException, NoSuchProviderException {
-        return provider != null && !provider.startsWith("SunPKCS11") && !provider.startsWith("SunMSCAPI")?MessageDigest.getInstance(hashAlgorithm, provider):MessageDigest.getInstance(normalizeDigestName(hashAlgorithm));
+        return provider != null && !provider.startsWith("SunPKCS11") && !provider.startsWith("SunMSCAPI") ? MessageDigest.getInstance(hashAlgorithm, provider) : MessageDigest.getInstance(normalizeDigestName(hashAlgorithm));
     }
 
     public static byte[] digest(InputStream data, String hashAlgorithm, String provider) throws GeneralSecurityException, IOException {
@@ -46,7 +45,7 @@ public class DigestAlgorithms {
         byte[] buf = new byte[8192];
 
         int n;
-        while((n = data.read(buf)) > 0) {
+        while ((n = data.read(buf)) > 0) {
             messageDigest.update(buf, 0, n);
         }
 
@@ -54,16 +53,16 @@ public class DigestAlgorithms {
     }
 
     public static String getDigest(String oid) {
-        String ret = (String)digestNames.get(oid);
-        return ret == null?oid:ret;
+        String ret = (String) digestNames.get(oid);
+        return ret == null ? oid : ret;
     }
 
     public static String normalizeDigestName(String algo) {
-        return fixNames.containsKey(algo)?(String)fixNames.get(algo):algo;
+        return fixNames.containsKey(algo) ? (String) fixNames.get(algo) : algo;
     }
 
     public static String getAllowedDigests(String name) {
-        return (String)allowedDigests.get(name.toUpperCase());
+        return (String) allowedDigests.get(name.toUpperCase());
     }
 
     static {

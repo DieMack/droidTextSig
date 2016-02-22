@@ -26,6 +26,10 @@ import com.lowagie.text.pdf.PdfStamper;
 import com.lowagie.text.pdf.PdfString;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.TSAClient;
+import com.xpandit.datastructures.SignatureDetachedData;
+import com.xpandit.utils.DigestAlgorithms;
+import com.xpandit.utils.FileUtils;
+import com.xpandit.utils.SignatureUtils;
 
 import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -52,12 +56,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
 
-import datastructures.SignatureData;
-import datastructures.SignatureDetachedData;
-import enumerators.SignatureResponse;
-import utils.DigestAlgorithms;
-import utils.SignatureUtils;
-import utils.FileUtils;
 
 /**
  * Description
@@ -132,7 +130,7 @@ public class SignatureAssistant {
                 return allSignatureFields;
             else {
                 for (String s : blankSignatureFields) {
-                    if (allSignatureFields!=null && allSignatureFields.contains(s)) {
+                    if (allSignatureFields != null && allSignatureFields.contains(s)) {
                         allSignatureFields.remove(s);
                     }
                 }

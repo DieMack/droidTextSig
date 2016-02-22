@@ -1,4 +1,4 @@
-package utils;
+package com.xpandit.utils;
 
 import java.io.File;
 
@@ -11,10 +11,10 @@ import java.io.File;
 
 public class FileUtils {
 
-    public static Boolean fileExists(String path){
+    public static Boolean fileExists(String path) {
         Boolean result = false;
         File file = new File(path);
-        if(file.exists())
+        if (file.exists())
             result = true;
         return result;
     }
