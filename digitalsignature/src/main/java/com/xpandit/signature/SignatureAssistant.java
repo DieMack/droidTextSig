@@ -55,8 +55,8 @@ import java.util.Set;
 import datastructures.SignatureData;
 import datastructures.SignatureDetachedData;
 import enumerators.SignatureResponse;
-import signature.DigestAlgorithms;
-import signature.SignatureUtils;
+import utils.DigestAlgorithms;
+import utils.SignatureUtils;
 import utils.FileUtils;
 
 /**
