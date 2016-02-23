@@ -26,10 +26,12 @@ import com.lowagie.text.pdf.PdfStamper;
 import com.lowagie.text.pdf.PdfString;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.TSAClient;
+import com.xpandit.datastructures.SignatureData;
 import com.xpandit.datastructures.SignatureDetachedData;
-import com.xpandit.utils.DigestAlgorithms;
+import com.xpandit.digests.DigestAlgorithms;
 import com.xpandit.utils.FileUtils;
 import com.xpandit.utils.SignatureUtils;
+import com.xpandit.utils.TSARequest;
 
 import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -55,7 +57,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Set;
-
 
 /**
  * Description
@@ -289,7 +290,7 @@ public class SignatureAssistant {
         return SignatureResponse.SUCCESS;
     }
 
-    public static SignatureDetachedData signPDFWithCC(String src,
+    public static SignatureDetachedData signPdfWithCC(String src,
                                                       String dest,
                                                       SignatureData sd,
                                                       String customCCNumber,
@@ -544,6 +545,40 @@ public class SignatureAssistant {
             }
         }
 
+    }
+
+    public static void timestampPdf(PdfSignatureAppearance sigAppearance, TSARequest tsaRequest, String signatureName) throws IOException, DocumentException, GeneralSecurityException {
+        int contentEstimated = tsaRequest.getTokenSizeEstimate();
+        sigAppearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
+        PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
+        dic.put(PdfName.TYPE, new PdfName("DocTimeStamp"));
+        sigAppearance.setCryptoDictionary(dic);
+        HashMap exc = new HashMap();
+        exc.put(PdfName.CONTENTS, new Integer(contentEstimated * 2 + 2));
+        sigAppearance.preClose(exc);
+        InputStream stream = sigAppearance.getRangeStream();
+        MessageDigest messageDigest = tsaRequest.getMessageDigest();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = stream.read(buf)) > 0) {
+            messageDigest.update(buf, 0, n);
+        }
+        byte[] tsImprint = messageDigest.digest();
+        byte[] tsToken;
+        try {
+            tsToken = tsaRequest.getTimeStampToken(null, tsImprint);
+        } catch (Exception var14) {
+            throw new GeneralSecurityException(var14);
+        }
+        if (contentEstimated + 2 < tsToken.length) {
+            throw new IOException("Not enough space");
+        } else {
+            byte[] paddedSig = new byte[contentEstimated];
+            System.arraycopy(tsToken, 0, paddedSig, 0, tsToken.length);
+            PdfDictionary dic2 = new PdfDictionary();
+            dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
+            sigAppearance.close(dic2);
+        }
     }
 
     public static byte[] digest(InputStream data, MessageDigest messageDigest) throws GeneralSecurityException, IOException {

@@ -1,4 +1,4 @@
-package com.xpandit.utils;
+package com.xpandit.digests;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 

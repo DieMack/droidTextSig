@@ -1,10 +1,4 @@
-package com.xpandit.utils;
-/**
- * Description
- *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
- * @version $Revision : 1 $
- */
+package com.xpandit.digests;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +7,13 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.HashMap;
+
+/**
+ * Description
+ *
+ * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @version $Revision : 1 $
+ */
 
 public class DigestAlgorithms {
 

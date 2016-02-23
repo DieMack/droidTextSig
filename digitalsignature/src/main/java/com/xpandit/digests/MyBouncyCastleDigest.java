@@ -1,4 +1,6 @@
-package com.xpandit.utils;
+package com.xpandit.digests;
+
+import com.xpandit.utils.SignatureUtils;
 
 import org.spongycastle.jcajce.provider.digest.MD2;
 

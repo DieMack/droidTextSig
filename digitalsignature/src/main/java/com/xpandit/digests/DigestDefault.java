@@ -1,4 +1,4 @@
-package com.xpandit.utils;
+package com.xpandit.digests;
 
 import android.util.Log;
 
@@ -12,6 +12,9 @@ public class DigestDefault {
 
     final static String TAG = DigestDefault.class.getSimpleName();
 
+    protected MessageDigest md;
+    protected static byte[] digestWithAID;
+    protected byte[] digest;
     protected static final byte[] SHA256_AID = {(byte) 0x30, (byte) 0x31,
             (byte) 0x30, (byte) 0x0d, (byte) 0x06, (byte) 0x09, (byte) 0x60,
             (byte) 0x86, (byte) 0x48, (byte) 0x01, (byte) 0x65, (byte) 0x03,
@@ -22,9 +25,6 @@ public class DigestDefault {
             (byte) 0x30, (byte) 0x09, (byte) 0x06, (byte) 0x05, (byte) 0x2b,
             (byte) 0x0e, (byte) 0x03, (byte) 0x02, (byte) 0x1a, (byte) 0x05,
             (byte) 0x00, (byte) 0x04, (byte) 0x14};
-    protected static byte[] digestWithAID;
-    protected byte[] digest;
-    protected MessageDigest md;
 
     protected DigestDefault(byte[] msgBytes, String algorithm, String provider) throws GeneralSecurityException {
         if (provider == null) {
