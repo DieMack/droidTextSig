@@ -291,11 +291,28 @@ public class SignatureAssistant {
         return SignatureResponse.SUCCESS;
     }
 
-    public static SignatureDetachedData signPdfWithCC(String src,
-                                                      String dest,
-                                                      SignatureData sd,
+    /**
+     * @param fileSource      - The input file used that is going to be signed
+     * @param fileDestination - The output file of the signing operation
+     * @param signatureData   - The Signature Data object that contains all relevant information regarding the signature
+     * @param customCCNumber  - The custom Citizen Card Number to be inserted on the signature
+     * @param certChain       - The Certificate chain
+     * @param ocspClient      - The Online Certificate Status Protocol Client
+     * @param tsaClient       - The Timestamp Client
+     * @param estimatedSize   - The estimated size of the token
+     * @param img             - The citizen Card logo image that is passed (anything else works as well!)
+     * @param eid             - The External Signature
+     * @param digest          - The External Digest
+     * @return
+     * @throws GeneralSecurityException
+     * @throws IOException
+     * @throws DocumentException
+     */
+    public static SignatureDetachedData signPdfWithCC(String fileSource,
+                                                      String fileDestination,
+                                                      SignatureData signatureData,
                                                       String customCCNumber,
-                                                      Certificate[] chain,
+                                                      Certificate[] certChain,
                                                       OcspClient ocspClient,
                                                       TSAClient tsaClient,
                                                       int estimatedSize,
@@ -303,7 +320,7 @@ public class SignatureAssistant {
                                                       SignatureUtils.MyExternalSignature eid,
                                                       SignatureUtils.MyExternalDigest digest) throws GeneralSecurityException, IOException, DocumentException {
 
-        X500Name x500name = new JcaX509CertificateHolder((X509Certificate) chain[0]).getSubject();
+        X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certChain[0]).getSubject();
         RDN cn = x500name.getRDNs(BCStyle.CN)[0];
         String cnStr = IETFUtils.valueToString(cn.getFirst().getValue());
         RDN serialNumber = x500name.getRDNs(BCStyle.SERIALNUMBER)[0];
@@ -312,24 +329,24 @@ public class SignatureAssistant {
         img.setAbsolutePosition(0, 0);
 
         // Creating the reader and the stamper
-        PdfReader reader = new PdfReader(src);
+        PdfReader reader = new PdfReader(fileSource);
 
         int paragraphLeading = 10;
         Date date = new Date();
-        dest = dest + ".pdf";
+        fileDestination = fileDestination + ".pdf";
 
-        FileOutputStream os = new FileOutputStream(dest);
-        String tmp_path = dest.replace(".pdf", "_tmp.pdf");
+        FileOutputStream os = new FileOutputStream(fileDestination);
+        String tmp_path = fileDestination.replace(".pdf", "_tmp.pdf");
         Log.i("debug", tmp_path);
         PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0');
 
         // Creating the appearance
         PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
         appearance.setAcro6Layers(true);
-        appearance.setReason(sd.getReason());
-        appearance.setLocation(sd.getLocation());
-        appearance.setContact(sd.getAuthor());
-        appearance.setVisibleSignature(sd.getSignatureName());
+        appearance.setReason(signatureData.getReason());
+        appearance.setLocation(signatureData.getLocation());
+        appearance.setContact(signatureData.getAuthor());
+        appearance.setVisibleSignature(signatureData.getSignatureName());
 
         // Creating the appearance for layer 2
         PdfTemplate n2 = appearance.getLayer(2);
@@ -420,11 +437,18 @@ public class SignatureAssistant {
         int width = 92;
         n2.addImage(img, width, 0, 0, (height / 3), n2.getWidth() - width, 0.5F, true);
 
-        return signDetached(appearance, digest, eid, chain, ocspClient, tsaClient, estimatedSize, reader, os, stamper);
+        return signDetached(appearance, digest, eid, certChain, ocspClient, tsaClient, estimatedSize, reader, os, stamper);
 
     }
 
-
+    /**
+     * The second part of the CitizenCard Signature Procedure. Due to asynchronous requirements, this method was broken
+     * into two 'SignDetached and 'SignDetachedFinish'
+     *
+     * @throws IOException
+     * @throws DocumentException
+     * @throws GeneralSecurityException
+     */
     public static SignatureDetachedData signDetached(PdfSignatureAppearance sap,
                                                      SignatureUtils.MyExternalDigest myExternalDigest,
                                                      SignatureUtils.MyExternalSignature externalSignature,
@@ -483,7 +507,12 @@ public class SignatureAssistant {
         return sdd;
     }
 
-
+    /**
+     * Continuation of the previous method (asynchronous requirements)
+     *
+     * @param data - The Byte array that will be passed to the external digest method
+     * @param sai  - The Signature Assistant Interface that is going to be called whenever this method is finished
+     */
     public static void signDetachedFinish(byte[] data, SignatureAssistantInterface sai) {
         new signDetachedFinish(data, sai).execute();
     }
@@ -548,9 +577,18 @@ public class SignatureAssistant {
 
     }
 
-    public static void timestampPdf(String sourceFile, String destinationFile, TSARequest tsaRequest, String signatureName) throws IOException, DocumentException, GeneralSecurityException {
-        PdfReader r = new PdfReader(sourceFile);
-        FileOutputStream fos = new FileOutputStream(destinationFile);
+    /**
+     * @param fileSource      - The input file used that is going to be timestamped
+     * @param fileDestination - The output file of the timestamping operation
+     * @param tsaRequest      - The request that contains the Timestamping credentials and variables
+     * @param signatureName   - The signature name (optional). If null, will attach the LTV timestamp to the document
+     * @throws IOException
+     * @throws DocumentException
+     * @throws GeneralSecurityException
+     */
+    public static void timestampPdf(String fileSource, String fileDestination, TSARequest tsaRequest, String signatureName) throws IOException, DocumentException, GeneralSecurityException {
+        PdfReader r = new PdfReader(fileSource);
+        FileOutputStream fos = new FileOutputStream(fileDestination);
         PdfStamper stp = PdfStamper.createSignature(r, fos, '\0', null, true);
         PdfSignatureAppearance sigAppearance = stp.getSignatureAppearance();
         int contentEstimated = tsaRequest.getTokenSizeEstimate();
