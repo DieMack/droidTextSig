@@ -564,14 +564,11 @@ public class SignatureAssistant {
         InputStream stream = sigAppearance.getRangeStream();
         MessageDigest messageDigest = tsaRequest.getMessageDigest();
         byte[] buf = new byte[4096];
-
         int n;
         while ((n = stream.read(buf)) > 0) {
             messageDigest.update(buf, 0, n);
         }
-
         byte[] tsImprint = messageDigest.digest();
-
         byte[] tsToken;
         try {
             tsToken = tsaRequest.getTimeStampToken(tsImprint);
@@ -587,7 +584,6 @@ public class SignatureAssistant {
             dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
             sigAppearance.close(dic2);
         }
-
     }
 
     public static byte[] digest(InputStream data, MessageDigest messageDigest) throws GeneralSecurityException, IOException {

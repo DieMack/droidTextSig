@@ -3,9 +3,6 @@ package com.xpandit.utils;
 import android.util.Base64;
 import android.util.Log;
 
-import com.lowagie.text.pdf.PdfPKCS7;
-import com.lowagie.text.pdf.TSAClient;
-
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.tsp.TSPAlgorithms;
 import org.bouncycastle.tsp.TSPException;
@@ -56,7 +53,7 @@ public class TSARequest {
         this(url, username, password, null, 4096, defaultAlgorithm);
     }
 
-    public TSARequest(String url, String username, String password,int tokSzEstimate, String digestAlgorithm) {
+    public TSARequest(String url, String username, String password, int tokSzEstimate, String digestAlgorithm) {
         this(url, username, password, null, tokSzEstimate, digestAlgorithm);
     }
 
@@ -83,7 +80,7 @@ public class TSARequest {
 
         TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
         tsqGenerator.setCertReq(true);
-        if(tsaOid!=null)
+        if (tsaOid != null)
             tsqGenerator.setReqPolicy(tsaOid);
         TimeStampRequest tsReq = tsqGenerator.generate(TSPAlgorithms.SHA1, digest, BigInteger.valueOf(100));
         byte[] respBytes;
@@ -125,7 +122,7 @@ public class TSARequest {
             int value = (failure == null) ? 0 : failure.intValue();
             if (value != 0) {
                 String error = "Error: Invalid TSA response (" + tsRes.getStatusString() + ")";
-                Log.e(TAG,error);
+                Log.e(TAG, error);
                 return null;
             }
             TimeStampToken myTSToken = tsRes.getTimeStampToken();
@@ -136,10 +133,10 @@ public class TSARequest {
             }
             return myTSToken.getEncoded();
         } catch (IOException | TSPException e) {
-            Log.e(TAG,e.getMessage());
+            Log.e(TAG, e.getMessage());
         }
         return null;
     }
     // endregion
-    
+
 }
