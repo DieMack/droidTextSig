@@ -548,7 +548,11 @@ public class SignatureAssistant {
 
     }
 
-    public static void timestampPdf(PdfSignatureAppearance sigAppearance, TSARequest tsaRequest, String signatureName) throws IOException, DocumentException, GeneralSecurityException {
+    public static void timestampPdf(String sourceFile, String destinationFile, TSARequest tsaRequest, String signatureName) throws IOException, DocumentException, GeneralSecurityException {
+        PdfReader r = new PdfReader(sourceFile);
+        FileOutputStream fos = new FileOutputStream(destinationFile);
+        PdfStamper stp = PdfStamper.createSignature(r, fos, '\0', null, true);
+        PdfSignatureAppearance sigAppearance = stp.getSignatureAppearance();
         int contentEstimated = tsaRequest.getTokenSizeEstimate();
         sigAppearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
         PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
@@ -560,14 +564,17 @@ public class SignatureAssistant {
         InputStream stream = sigAppearance.getRangeStream();
         MessageDigest messageDigest = tsaRequest.getMessageDigest();
         byte[] buf = new byte[4096];
+
         int n;
         while ((n = stream.read(buf)) > 0) {
             messageDigest.update(buf, 0, n);
         }
+
         byte[] tsImprint = messageDigest.digest();
+
         byte[] tsToken;
         try {
-            tsToken = tsaRequest.getTimeStampToken(null, tsImprint);
+            tsToken = tsaRequest.getTimeStampToken(tsImprint);
         } catch (Exception var14) {
             throw new GeneralSecurityException(var14);
         }
@@ -580,6 +587,7 @@ public class SignatureAssistant {
             dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
             sigAppearance.close(dic2);
         }
+
     }
 
     public static byte[] digest(InputStream data, MessageDigest messageDigest) throws GeneralSecurityException, IOException {

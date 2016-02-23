@@ -34,7 +34,7 @@ import javax.net.ssl.HttpsURLConnection;
  * @version $Revision : 1 $
  */
 
-public class TSARequest implements TSAClient {
+public class TSARequest {
 
     // region Computation Elements
     protected String tsaURL;
@@ -56,6 +56,10 @@ public class TSARequest implements TSAClient {
         this(url, username, password, null, 4096, defaultAlgorithm);
     }
 
+    public TSARequest(String url, String username, String password,int tokSzEstimate, String digestAlgorithm) {
+        this(url, username, password, null, tokSzEstimate, digestAlgorithm);
+    }
+
     public TSARequest(String url, String username, String password, String oid, int tokSzEstimate, String digestAlgorithm) {
         this.tsaURL = url;
         this.tsaUsername = username;
@@ -75,11 +79,12 @@ public class TSARequest implements TSAClient {
         return MessageDigest.getInstance("SHA-1");
     }
 
-    public byte[] getTimeStampToken(PdfPKCS7 pdfPKCS7, byte[] digest) throws NoSuchAlgorithmException, UnsupportedEncodingException, TSPException {
+    public byte[] getTimeStampToken(byte[] digest) throws NoSuchAlgorithmException, UnsupportedEncodingException, TSPException {
 
         TimeStampRequestGenerator tsqGenerator = new TimeStampRequestGenerator();
         tsqGenerator.setCertReq(true);
-        tsqGenerator.setReqPolicy(tsaOid);
+        if(tsaOid!=null)
+            tsqGenerator.setReqPolicy(tsaOid);
         TimeStampRequest tsReq = tsqGenerator.generate(TSPAlgorithms.SHA1, digest, BigInteger.valueOf(100));
         byte[] respBytes;
         try {
@@ -99,7 +104,7 @@ public class TSARequest implements TSAClient {
             InputStream inp = tsaConnection.getInputStream();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
-            int bytesRead;
+            int bytesRead = 0;
             while ((bytesRead = inp.read(buffer, 0, buffer.length)) >= 0) {
                 baos.write(buffer, 0, bytesRead);
             }
@@ -120,18 +125,18 @@ public class TSARequest implements TSAClient {
             int value = (failure == null) ? 0 : failure.intValue();
             if (value != 0) {
                 String error = "Error: Invalid TSA response (" + tsRes.getStatusString() + ")";
-                System.out.println(error);
+                Log.e(TAG,error);
                 return null;
             }
             TimeStampToken myTSToken = tsRes.getTimeStampToken();
             if (myTSToken == null) {
                 String error = "Error: Invalid TSA response (NULL)";
-                System.out.println(error);
+                Log.e(TAG, error);
                 return null;
             }
             return myTSToken.getEncoded();
         } catch (IOException | TSPException e) {
-            System.out.println(e.getMessage());
+            Log.e(TAG,e.getMessage());
         }
         return null;
     }
