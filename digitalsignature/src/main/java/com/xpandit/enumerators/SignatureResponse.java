@@ -6,6 +6,7 @@ package com.xpandit.enumerators;
  * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
  * @version $Revision : 1 $
  */
+
 public enum SignatureResponse {
 
     FAILURE(-1),
@@ -37,4 +38,5 @@ public enum SignatureResponse {
         }
         return null;
     }
+
 }

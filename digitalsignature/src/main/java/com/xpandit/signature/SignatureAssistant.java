@@ -29,6 +29,7 @@ import com.lowagie.text.pdf.TSAClient;
 import com.xpandit.datastructures.SignatureData;
 import com.xpandit.datastructures.SignatureDetachedData;
 import com.xpandit.digests.DigestAlgorithms;
+import com.xpandit.enumerators.SignatureResponse;
 import com.xpandit.utils.FileUtils;
 import com.xpandit.utils.SignatureUtils;
 import com.xpandit.utils.TSARequest;
