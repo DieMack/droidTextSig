@@ -153,7 +153,6 @@ public class SignatureAssistant {
      * @throws IOException
      */
     public static ArrayList<SignatureData> getFormFieldPositions(String fileName, List<String> signatureNameList) throws IOException {
-        int page = -1;
         ArrayList<SignatureData> signatureDataList = new ArrayList<>();
         PdfReader reader = new PdfReader(fileName);
         AcroFields form = reader.getAcroFields();
@@ -164,7 +163,7 @@ public class SignatureAssistant {
                     case AcroFields.FIELD_TYPE_SIGNATURE:
                         if (form.getFieldPositions(signatureName).length > 0) {
                             float[] sigData = form.getFieldPositions(signatureName);
-                            page = (int) sigData[0];
+                            int page = (int) sigData[0];
                             float llx = sigData[1];
                             float lly = sigData[2];
                             float urx = sigData[3];
