@@ -11,7 +11,7 @@ import java.io.Serializable;
 
 public class SignatureData implements Serializable {
 
-    // region Class Variables
+    // region Class variables
     private String signatureName;
     private Integer signaturePage;
     private Integer page;

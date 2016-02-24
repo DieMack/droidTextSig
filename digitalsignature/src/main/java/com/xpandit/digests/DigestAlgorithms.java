@@ -17,6 +17,7 @@ import java.util.HashMap;
 
 public class DigestAlgorithms {
 
+    // region Class variables
     public static final String SHA1 = "SHA-1";
     public static final String SHA256 = "SHA-256";
     public static final String SHA384 = "SHA-384";
@@ -25,10 +26,14 @@ public class DigestAlgorithms {
     private static final HashMap<String, String> digestNames = new HashMap();
     private static final HashMap<String, String> fixNames = new HashMap();
     private static final HashMap<String, String> allowedDigests = new HashMap();
+    // endregion
 
+    // region Constructors
     public DigestAlgorithms() {
     }
+    // endregion
 
+    // region General Methods
     public static MessageDigest getMessageDigestFromOid(String digestOid, String provider) throws NoSuchAlgorithmException, NoSuchProviderException {
         return getMessageDigest(getDigest(digestOid), provider);
     }
@@ -120,4 +125,6 @@ public class DigestAlgorithms {
         allowedDigests.put("RIPEMD-256", "1.3.36.3.2.3");
         allowedDigests.put("GOST3411", "1.2.643.2.2.9");
     }
+    // endregion
+
 }

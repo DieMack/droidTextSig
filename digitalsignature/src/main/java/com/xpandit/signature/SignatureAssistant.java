@@ -57,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -80,8 +81,8 @@ public class SignatureAssistant {
 
     /**
      * @param fileName - The pdf file that contains the signature fields
-     * @return
      * @throws IOException
+     * @returns the list of all the signature fields
      */
     public static ArrayList<String> getAllSignatureFieldNames(String fileName) {
         try {
@@ -101,8 +102,8 @@ public class SignatureAssistant {
 
     /**
      * @param fileName - The file that contains the signature fields
-     * @return
      * @throws IOException
+     * @returns the list of all the unsigned signature fields
      */
     public static ArrayList<String> getAllUnsignedSignatureFieldsNames(String fileName) throws IOException {
         try {
@@ -121,8 +122,8 @@ public class SignatureAssistant {
 
     /**
      * @param fileName - The file that contains the signature fields
-     * @return
      * @throws IOException
+     * @returns the list of all the signed field names
      */
     public static ArrayList<String> getAllSignedSignatureFieldNames(String fileName) throws IOException {
         try {
@@ -146,57 +147,49 @@ public class SignatureAssistant {
     /**
      * getFormFieldPositions - Return the SignatureData for a given signatureName
      *
-     * @param fileName
-     * @param signatureName
-     * @return SignatureData -
+     * @param fileName          - The source pdf file
+     * @param signatureNameList - The list of the signatures that need the Signature Data
+     * @return SignatureData
      * @throws IOException
      */
-    public static SignatureData getFormFieldPositions(String fileName, String signatureName) throws IOException {
-        int page = -1;
-        float pageWidth = 0, pageHeight = 0, llx = 0, lly = 0, urx = 0, ury = 0;
-        // Create a signature_activity to extract info
+    public static ArrayList<SignatureData> getFormFieldPositions(String fileName, List<String> signatureNameList) throws IOException {
+        ArrayList<SignatureData> signatureDataList = new ArrayList<>();
         PdfReader reader = new PdfReader(fileName);
-        // Get the fields from the signature_activity (read-only!!!)
         AcroFields form = reader.getAcroFields();
-        // Loop over the fields and get info about them
         Set<String> fields = form.getFields().keySet();
         if (!fields.isEmpty()) {
-            for (String key : fields) {
-                switch (form.getFieldType(key)) {
+            for (String signatureName : signatureNameList) {
+                switch (form.getFieldType(signatureName)) {
                     case AcroFields.FIELD_TYPE_SIGNATURE:
                         if (form.getFieldPositions(signatureName).length > 0) {
                             float[] sigData = form.getFieldPositions(signatureName);
-                            page = (int) sigData[0];
-                            llx = sigData[1];
-                            lly = sigData[2];
-                            urx = sigData[3];
-                            ury = sigData[4];
+                            int page = (int) sigData[0];
+                            float llx = sigData[1];
+                            float lly = sigData[2];
+                            float urx = sigData[3];
+                            float ury = sigData[4];
                             Rectangle rect = reader.getPageSize(page);
-                            pageWidth = rect.getWidth();
-                            pageHeight = rect.getHeight();
-                        } else {
-                            return null;
+                            float pageWidth = rect.getWidth();
+                            float pageHeight = rect.getHeight();
+                            SignatureData sd = new SignatureData();
+                            sd.setSignatureName(signatureName);
+                            sd.setPage(page);
+                            sd.setPageWidth((int) pageWidth);
+                            sd.setPageHeight((int) pageHeight);
+                            sd.setLeft(llx);
+                            sd.setDown(lly);
+                            sd.setRight(urx);
+                            sd.setUp(ury);
+                            signatureDataList.add(sd);
                         }
                         break;
                     default:
                         break;
                 }
             }
-
             reader.close();
-            SignatureData sd = new SignatureData();
-            sd.setSignatureName(signatureName);
-            sd.setPage(page);
-            sd.setPageWidth((int) pageWidth);
-            sd.setPageHeight((int) pageHeight);
-            sd.setLeft(llx);
-            sd.setDown(lly);
-            sd.setRight(urx);
-            sd.setUp(ury);
-            return sd;
         }
-
-        return null;
+        return signatureDataList;
     }
 
     /**
