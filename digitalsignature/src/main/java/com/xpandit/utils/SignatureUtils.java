@@ -12,7 +12,6 @@ import java.security.MessageDigest;
 
 public class SignatureUtils {
 
-
     public interface MyExternalDigest {
         MessageDigest getMessageDigest(String var1) throws GeneralSecurityException;
     }
