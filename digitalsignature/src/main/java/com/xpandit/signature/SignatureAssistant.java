@@ -209,79 +209,94 @@ public class SignatureAssistant {
                                             TSAClient tsaClient,
                                             SignatureData signatureData,
                                             Bitmap signatureImage) {
+
+        boolean sameInOut = fileSource.equals(fileDestination);
+        String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
+
         try {
-            BouncyCastleProvider provider = new BouncyCastleProvider();
-            Security.addProvider(provider);
-            KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-            ks.load(keyStore, keyStorePassword);
-            String alias = ks.aliases().nextElement();
-            PrivateKey pk = (PrivateKey) ks.getKey(alias, keyStorePassword);
-            Certificate[] chain = ks.getCertificateChain(alias);
-
-            if (!FileUtils.fileExists(fileSource)) {
-                return SignatureResponse.FILE_NOT_EXIST;
-            }
-
-            PdfReader reader = new PdfReader(fileSource);
-            FileOutputStream os = new FileOutputStream(String.format(fileDestination, 1));
-            PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
-
-            PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
-            if (signatureImage != null) {
-                ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                signatureImage.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                Image image = Image.getInstance(stream.toByteArray());
-                appearance.setImage(image);
-            }
-            appearance.setLayer2Text("");
-            appearance.setLayer4Text("");
-            appearance.setAcro6Layers(true);
-            appearance.setVisibleSignature(signatureData.getSignatureName());
-            appearance.setCrypto(pk, chain, null, PdfSignatureAppearance.WINCER_SIGNED);
-
-            PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("adbe.pkcs7.detached"));
-            dic.setContact(signatureData.getAuthor());
-            dic.setLocation(signatureData.getLocation());
-            dic.setReason(signatureData.getReason());
-            dic.setDate(new PdfDate());
-            appearance.setCryptoDictionary(dic);
-
-            int contentEstimated = 15000;
-            HashMap<PdfName, Integer> exc = new HashMap<>();
-            exc.put(PdfName.CONTENTS, contentEstimated * 2 + 2);
-            appearance.preClose(exc);
-
-            InputStream data = appearance.getRangeStream();
-            MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
-
-            byte[] hash = digest(data, messageDigest);
-            Calendar cal = Calendar.getInstance();
-            byte[] ocsp = null;
-            PdfPKCS7 sgn = new PdfPKCS7(pk, chain, null, "SHA1", null, false);
-            byte sh[] = sgn.getAuthenticatedAttributeBytes(hash, cal, ocsp);
-
-            // breaking point
-            sgn.update(sh, 0, sh.length);
-            byte[] encodedSig;
+            if (sameInOut) FileUtils.copyFile(fileSource, myDest);
             try {
-                encodedSig = sgn.getEncodedPKCS7(hash, cal, tsaClient, ocsp);
+                BouncyCastleProvider provider = new BouncyCastleProvider();
+                Security.addProvider(provider);
+                KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
+                ks.load(keyStore, keyStorePassword);
+                String alias = ks.aliases().nextElement();
+                PrivateKey pk = (PrivateKey) ks.getKey(alias, keyStorePassword);
+                Certificate[] chain = ks.getCertificateChain(alias);
+
+                if (!FileUtils.fileExists(fileSource)) {
+                    return SignatureResponse.FILE_NOT_EXIST;
+                }
+
+                PdfReader reader = new PdfReader(myDest);
+                FileOutputStream os = new FileOutputStream(String.format(fileDestination, 1));
+                PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
+
+                PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
+                if (signatureImage != null) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    signatureImage.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    Image image = Image.getInstance(stream.toByteArray());
+                    appearance.setImage(image);
+                }
+                appearance.setLayer2Text("");
+                appearance.setLayer4Text("");
+                appearance.setAcro6Layers(true);
+                appearance.setVisibleSignature(signatureData.getSignatureName());
+                appearance.setCrypto(pk, chain, null, PdfSignatureAppearance.WINCER_SIGNED);
+
+                PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("adbe.pkcs7.detached"));
+                dic.setContact(signatureData.getAuthor());
+                dic.setLocation(signatureData.getLocation());
+                dic.setReason(signatureData.getReason());
+                dic.setDate(new PdfDate());
+                appearance.setCryptoDictionary(dic);
+
+                int contentEstimated = 15000;
+                HashMap<PdfName, Integer> exc = new HashMap<>();
+                exc.put(PdfName.CONTENTS, contentEstimated * 2 + 2);
+                appearance.preClose(exc);
+
+                InputStream data = appearance.getRangeStream();
+                MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
+
+                byte[] hash = digest(data, messageDigest);
+                Calendar cal = Calendar.getInstance();
+                byte[] ocsp = null;
+                PdfPKCS7 sgn = new PdfPKCS7(pk, chain, null, "SHA1", null, false);
+                byte sh[] = sgn.getAuthenticatedAttributeBytes(hash, cal, ocsp);
+
+                // breaking point
+                sgn.update(sh, 0, sh.length);
+                byte[] encodedSig;
+                try {
+                    encodedSig = sgn.getEncodedPKCS7(hash, cal, tsaClient, ocsp);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return SignatureResponse.TSA_RESPONSE_ERROR;
+                }
+                if (encodedSig != null && (contentEstimated + 2 < encodedSig.length)) {
+                    return SignatureResponse.NOT_ENOUGH_SPACE;
+                }
+                byte[] paddedSig = new byte[contentEstimated];
+                System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
+                PdfDictionary dic2 = new PdfDictionary();
+                dic2.put(PdfName.CONTENTS, new PdfString(paddedSig).setHexWriting(true));
+                appearance.close(dic2);
             } catch (Exception e) {
                 e.printStackTrace();
-                return SignatureResponse.TSA_RESPONSE_ERROR;
+                if (sameInOut) {
+                    FileUtils.deleteFile(fileSource);
+                    FileUtils.renameFile(myDest, fileSource);
+                }
+                return SignatureResponse.FAILURE;
             }
-            if (encodedSig != null && (contentEstimated + 2 < encodedSig.length)) {
-                return SignatureResponse.NOT_ENOUGH_SPACE;
-            }
-            byte[] paddedSig = new byte[contentEstimated];
-            System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
-            PdfDictionary dic2 = new PdfDictionary();
-            dic2.put(PdfName.CONTENTS, new PdfString(paddedSig).setHexWriting(true));
-            appearance.close(dic2);
-        } catch (Exception e) {
+            if (sameInOut) FileUtils.deleteFile(myDest);
+            return SignatureResponse.SUCCESS;
+        } catch (IOException e) {
             e.printStackTrace();
             return SignatureResponse.FAILURE;
         }
-        return SignatureResponse.SUCCESS;
     }
 
     /**
