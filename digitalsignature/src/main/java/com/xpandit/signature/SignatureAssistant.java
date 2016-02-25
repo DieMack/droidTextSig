@@ -326,7 +326,6 @@ public class SignatureAssistant {
 
         int paragraphLeading = 10;
         Date date = new Date();
-        fileDestination = fileDestination + ".pdf";
 
         FileOutputStream os = new FileOutputStream(fileDestination);
         String tmp_path = fileDestination.replace(".pdf", "_tmp.pdf");
