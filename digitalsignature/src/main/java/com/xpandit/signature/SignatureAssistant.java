@@ -553,7 +553,6 @@ public class SignatureAssistant {
                 System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
                 PdfDictionary dic2 = new PdfDictionary();
                 dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
-
                 try {
                     if (sdd.getSap().isPreClosed()) {
                         sdd.getSap().close(dic2);
