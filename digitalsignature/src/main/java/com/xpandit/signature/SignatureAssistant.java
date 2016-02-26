@@ -327,125 +327,140 @@ public class SignatureAssistant {
                                                       Image img,
                                                       SignatureUtils.MyExternalSignature eid,
                                                       SignatureUtils.MyExternalDigest digest) throws GeneralSecurityException, IOException, DocumentException {
+        boolean sameInOut = fileSource.equals(fileDestination);
+        String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
+        try {
+            if (sameInOut) FileUtils.copyFile(fileSource, myDest);
+            try {
+                X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certChain[0]).getSubject();
+                RDN cn = x500name.getRDNs(BCStyle.CN)[0];
+                String cnStr = IETFUtils.valueToString(cn.getFirst().getValue());
+                RDN serialNumber = x500name.getRDNs(BCStyle.SERIALNUMBER)[0];
 
-        X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certChain[0]).getSubject();
-        RDN cn = x500name.getRDNs(BCStyle.CN)[0];
-        String cnStr = IETFUtils.valueToString(cn.getFirst().getValue());
-        RDN serialNumber = x500name.getRDNs(BCStyle.SERIALNUMBER)[0];
+                String serialNumberStr = IETFUtils.valueToString(serialNumber.getFirst().getValue());
+                img.setAbsolutePosition(0, 0);
 
-        String serialNumberStr = IETFUtils.valueToString(serialNumber.getFirst().getValue());
-        img.setAbsolutePosition(0, 0);
+                // Creating the reader and the stamper
+                PdfReader reader = new PdfReader(myDest);
 
-        // Creating the reader and the stamper
-        PdfReader reader = new PdfReader(fileSource);
+                int paragraphLeading = 10;
+                Date date = new Date();
 
-        int paragraphLeading = 10;
-        Date date = new Date();
+                FileOutputStream os = new FileOutputStream(fileDestination);
+                String tmp_path = fileDestination.replace(".pdf", "_tmp.pdf");
+                Log.i("debug", tmp_path);
+                PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
 
-        FileOutputStream os = new FileOutputStream(fileDestination);
-        String tmp_path = fileDestination.replace(".pdf", "_tmp.pdf");
-        Log.i("debug", tmp_path);
-        PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
+                // Creating the appearance
+                PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
+                appearance.setAcro6Layers(true);
+                appearance.setReason(signatureData.getReason());
+                appearance.setLocation(signatureData.getLocation());
+                appearance.setContact(signatureData.getAuthor());
+                appearance.setVisibleSignature(signatureData.getSignatureName());
 
-        // Creating the appearance
-        PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
-        appearance.setAcro6Layers(true);
-        appearance.setReason(signatureData.getReason());
-        appearance.setLocation(signatureData.getLocation());
-        appearance.setContact(signatureData.getAuthor());
-        appearance.setVisibleSignature(signatureData.getSignatureName());
+                // Creating the appearance for layer 2
+                PdfTemplate n2 = appearance.getLayer(2);
+                ColumnText ct = new ColumnText(n2);
+                ct.setSimpleColumn(n2.getBoundingBox().getLeft(), n2.getBoundingBox().getBottom(), n2.getBoundingBox().getRight(), n2.getBoundingBox().getTop());
+                ct.setExtraParagraphSpace(0);
+                ct.setLeading(0);
 
-        // Creating the appearance for layer 2
-        PdfTemplate n2 = appearance.getLayer(2);
-        ColumnText ct = new ColumnText(n2);
-        ct.setSimpleColumn(n2.getBoundingBox().getLeft(), n2.getBoundingBox().getBottom(), n2.getBoundingBox().getRight(), n2.getBoundingBox().getTop());
-        ct.setExtraParagraphSpace(0);
-        ct.setLeading(0);
+                PdfPTable signatureBlockContainer = new PdfPTable(1);
+                signatureBlockContainer.setSpacingAfter(0);
+                signatureBlockContainer.setSpacingBefore(0);
+                signatureBlockContainer.setWidthPercentage(100);
 
-        PdfPTable signatureBlockContainer = new PdfPTable(1);
-        signatureBlockContainer.setSpacingAfter(0);
-        signatureBlockContainer.setSpacingBefore(0);
-        signatureBlockContainer.setWidthPercentage(100);
+                // FIRST BLOCK
+                // Creating the Cell to accommodate the signature holder name
+                PdfPCell firstBlock = new PdfPCell();
+                firstBlock.setBorder(Rectangle.NO_BORDER);
+                firstBlock.setFixedHeight(28);
 
-        // FIRST BLOCK
-        // Creating the Cell to accommodate the signature holder name
-        PdfPCell firstBlock = new PdfPCell();
-        firstBlock.setBorder(Rectangle.NO_BORDER);
-        firstBlock.setFixedHeight(28);
+                // LABEL
+                Paragraph firstBlockLabel = new Paragraph();
+                Chunk firstBlockLabelText = new Chunk("Este documento foi assinado por:");
+                firstBlockLabelText.setFont(layer2Font_Discrete);
+                firstBlockLabel.setLeading(paragraphLeading - 5);
+                firstBlockLabel.setSpacingAfter(2);
+                firstBlockLabel.add(firstBlockLabelText);
+                firstBlock.addElement(firstBlockLabel);
 
-        // LABEL
-        Paragraph firstBlockLabel = new Paragraph();
-        Chunk firstBlockLabelText = new Chunk("Este documento foi assinado por:");
-        firstBlockLabelText.setFont(layer2Font_Discrete);
-        firstBlockLabel.setLeading(paragraphLeading - 5);
-        firstBlockLabel.setSpacingAfter(2);
-        firstBlockLabel.add(firstBlockLabelText);
-        firstBlock.addElement(firstBlockLabel);
+                // NAME
+                Paragraph firstBlockName = new Paragraph();
+                Chunk firstBlockNameText;
+                if (cnStr.length() > 30) {
+                    //truncate Name just to keep max two lines for the name
+                    if (cnStr.length() > 65) {
+                        firstBlockNameText = new Chunk(cnStr.substring(0, 65).toUpperCase());
+                    } else {
+                        firstBlockNameText = new Chunk(cnStr.toUpperCase());
+                    }
+                } else {
+                    firstBlockNameText = new Chunk(cnStr.toUpperCase());
+                }
+                firstBlockNameText.setFont(layer2Font_Bold);
+                firstBlockName.add(firstBlockNameText);
+                firstBlockName.setLeading(paragraphLeading - 2);
+                firstBlockName.setSpacingAfter(0);
+                firstBlockName.setSpacingBefore(0);
+                firstBlock.addElement(firstBlockName);
+                signatureBlockContainer.addCell(firstBlock);
 
-        // NAME
-        Paragraph firstBlockName = new Paragraph();
-        Chunk firstBlockNameText;
-        if (cnStr.length() > 30) {
-            //truncate Name just to keep max two lines for the name
-            if (cnStr.length() > 65) {
-                firstBlockNameText = new Chunk(cnStr.substring(0, 65).toUpperCase());
-            } else {
-                firstBlockNameText = new Chunk(cnStr.toUpperCase());
+                // SECOND BLOCK
+                // Creating the Cell to accommodate the signature's holder card number and date
+                PdfPCell secondBlock = new PdfPCell();
+                secondBlock.setBorder(Rectangle.NO_BORDER);
+
+                // CC NUMBER
+                String ccNumber = "" + serialNumberStr.substring(2);
+                if (customCCNumber != null && !customCCNumber.isEmpty()) {
+                    ccNumber = customCCNumber;
+                }
+                Paragraph secondBlockLabelAndCitizenCard = new Paragraph();
+                Chunk citizenCardLabel = new Chunk("Cartão Cidadão Nº: ");
+                citizenCardLabel.setFont(layer2Font_Discrete);
+                secondBlockLabelAndCitizenCard.add(citizenCardLabel);
+                Chunk citizenCardNumber = new Chunk(ccNumber);
+                citizenCardNumber.setFont(layer2Font_Bold);
+                secondBlockLabelAndCitizenCard.add(citizenCardNumber);
+                secondBlockLabelAndCitizenCard.setLeading(paragraphLeading - 2);
+                secondBlockLabelAndCitizenCard.setSpacingAfter(2);
+                secondBlock.addElement(secondBlockLabelAndCitizenCard);
+
+                // DATE
+                Paragraph secondBlockDate = new Paragraph();
+                Chunk dateLabel = new Chunk("Data: ");
+                dateLabel.setFont(layer2Font_Discrete);
+                secondBlockDate.add(dateLabel);
+                Chunk dateValue = new Chunk("" + sdf_visibleSignature.format(date));
+                dateValue.setFont(layer2Font_Bold);
+                secondBlockDate.add(dateValue);
+                secondBlockDate.setLeading(paragraphLeading - 2);
+                secondBlock.addElement(secondBlockDate);
+                signatureBlockContainer.addCell(secondBlock);
+                ct.addElement(signatureBlockContainer);
+                Log.d(TAG, "Signing > Signature Height: " + n2.getHeight());
+                ct.go();
+
+                // THIRD BLOCK (IMAGE)
+                int height = 60;
+                int width = 92;
+                n2.addImage(img, width, 0, 0, (height / 3), n2.getWidth() - width, 0.5F, true);
+
+                return signDetached(appearance, digest, eid, certChain, ocspClient, tsaClient, estimatedSize, reader, os, stamper);
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (sameInOut) {
+                    FileUtils.deleteFile(fileSource);
+                    FileUtils.renameFile(myDest, fileSource);
+                }
+                throw e;
             }
-        } else {
-            firstBlockNameText = new Chunk(cnStr.toUpperCase());
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
         }
-        firstBlockNameText.setFont(layer2Font_Bold);
-        firstBlockName.add(firstBlockNameText);
-        firstBlockName.setLeading(paragraphLeading - 2);
-        firstBlockName.setSpacingAfter(0);
-        firstBlockName.setSpacingBefore(0);
-        firstBlock.addElement(firstBlockName);
-        signatureBlockContainer.addCell(firstBlock);
-
-        // SECOND BLOCK
-        // Creating the Cell to accommodate the signature's holder card number and date
-        PdfPCell secondBlock = new PdfPCell();
-        secondBlock.setBorder(Rectangle.NO_BORDER);
-
-        // CC NUMBER
-        String ccNumber = "" + serialNumberStr.substring(2);
-        if (customCCNumber != null && !customCCNumber.isEmpty()) {
-            ccNumber = customCCNumber;
-        }
-        Paragraph secondBlockLabelAndCitizenCard = new Paragraph();
-        Chunk citizenCardLabel = new Chunk("Cartão Cidadão Nº: ");
-        citizenCardLabel.setFont(layer2Font_Discrete);
-        secondBlockLabelAndCitizenCard.add(citizenCardLabel);
-        Chunk citizenCardNumber = new Chunk(ccNumber);
-        citizenCardNumber.setFont(layer2Font_Bold);
-        secondBlockLabelAndCitizenCard.add(citizenCardNumber);
-        secondBlockLabelAndCitizenCard.setLeading(paragraphLeading - 2);
-        secondBlockLabelAndCitizenCard.setSpacingAfter(2);
-        secondBlock.addElement(secondBlockLabelAndCitizenCard);
-
-        // DATE
-        Paragraph secondBlockDate = new Paragraph();
-        Chunk dateLabel = new Chunk("Data: ");
-        dateLabel.setFont(layer2Font_Discrete);
-        secondBlockDate.add(dateLabel);
-        Chunk dateValue = new Chunk("" + sdf_visibleSignature.format(date));
-        dateValue.setFont(layer2Font_Bold);
-        secondBlockDate.add(dateValue);
-        secondBlockDate.setLeading(paragraphLeading - 2);
-        secondBlock.addElement(secondBlockDate);
-        signatureBlockContainer.addCell(secondBlock);
-        ct.addElement(signatureBlockContainer);
-        Log.d(TAG, "Signing > Signature Height: " + n2.getHeight());
-        ct.go();
-
-        // THIRD BLOCK (IMAGE)
-        int height = 60;
-        int width = 92;
-        n2.addImage(img, width, 0, 0, (height / 3), n2.getWidth() - width, 0.5F, true);
-
-        return signDetached(appearance, digest, eid, certChain, ocspClient, tsaClient, estimatedSize, reader, os, stamper);
-
     }
 
     /**
@@ -592,41 +607,60 @@ public class SignatureAssistant {
      * @throws DocumentException
      * @throws GeneralSecurityException
      */
-    public static void timestampPdf(String fileSource, String fileDestination, TSARequest tsaRequest, String signatureName) throws IOException, DocumentException, GeneralSecurityException {
-        PdfReader r = new PdfReader(fileSource);
-        FileOutputStream fos = new FileOutputStream(fileDestination);
-        PdfStamper stp = PdfStamper.createSignature(r, fos, '\0', null, true);
-        PdfSignatureAppearance sigAppearance = stp.getSignatureAppearance();
-        int contentEstimated = tsaRequest.getTokenSizeEstimate();
-        sigAppearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
-        PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
-        dic.put(PdfName.TYPE, new PdfName("DocTimeStamp"));
-        sigAppearance.setCryptoDictionary(dic);
-        HashMap exc = new HashMap();
-        exc.put(PdfName.CONTENTS, new Integer(contentEstimated * 2 + 2));
-        sigAppearance.preClose(exc);
-        InputStream stream = sigAppearance.getRangeStream();
-        MessageDigest messageDigest = tsaRequest.getMessageDigest();
-        byte[] buf = new byte[4096];
-        int n;
-        while ((n = stream.read(buf)) > 0) {
-            messageDigest.update(buf, 0, n);
-        }
-        byte[] tsImprint = messageDigest.digest();
-        byte[] tsToken;
+    public static SignatureResponse timestampPdf(String fileSource, String fileDestination, TSARequest tsaRequest, String signatureName) {
+        boolean sameInOut = fileSource.equals(fileDestination);
+        String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
         try {
-            tsToken = tsaRequest.getTimeStampToken(tsImprint);
-        } catch (Exception var14) {
-            throw new GeneralSecurityException(var14);
-        }
-        if (contentEstimated + 2 < tsToken.length) {
-            throw new IOException("Not enough space");
-        } else {
-            byte[] paddedSig = new byte[contentEstimated];
-            System.arraycopy(tsToken, 0, paddedSig, 0, tsToken.length);
-            PdfDictionary dic2 = new PdfDictionary();
-            dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
-            sigAppearance.close(dic2);
+            if (sameInOut) FileUtils.copyFile(fileSource, myDest);
+            try {
+                PdfReader r = new PdfReader(myDest);
+                FileOutputStream fos = new FileOutputStream(fileDestination);
+                PdfStamper stp = PdfStamper.createSignature(r, fos, '\0', null, true);
+                PdfSignatureAppearance sigAppearance = stp.getSignatureAppearance();
+                int contentEstimated = tsaRequest.getTokenSizeEstimate();
+                sigAppearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
+                PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
+                dic.put(PdfName.TYPE, new PdfName("DocTimeStamp"));
+                sigAppearance.setCryptoDictionary(dic);
+                HashMap exc = new HashMap();
+                exc.put(PdfName.CONTENTS, new Integer(contentEstimated * 2 + 2));
+                sigAppearance.preClose(exc);
+                InputStream stream = sigAppearance.getRangeStream();
+                MessageDigest messageDigest = tsaRequest.getMessageDigest();
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = stream.read(buf)) > 0) {
+                    messageDigest.update(buf, 0, n);
+                }
+                byte[] tsImprint = messageDigest.digest();
+                byte[] tsToken;
+                try {
+                    tsToken = tsaRequest.getTimeStampToken(tsImprint);
+                } catch (Exception var14) {
+                    throw new GeneralSecurityException(var14);
+                }
+                if (contentEstimated + 2 < tsToken.length) {
+                    return SignatureResponse.NOT_ENOUGH_SPACE;
+                } else {
+                    byte[] paddedSig = new byte[contentEstimated];
+                    System.arraycopy(tsToken, 0, paddedSig, 0, tsToken.length);
+                    PdfDictionary dic2 = new PdfDictionary();
+                    dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
+                    sigAppearance.close(dic2);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (sameInOut) {
+                    FileUtils.deleteFile(fileSource);
+                    FileUtils.renameFile(myDest, fileSource);
+                }
+                return SignatureResponse.TSA_RESPONSE_ERROR;
+            }
+            if (sameInOut) FileUtils.deleteFile(myDest);
+            return SignatureResponse.SUCCESS;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return SignatureResponse.TSA_RESPONSE_ERROR;
         }
     }
 
