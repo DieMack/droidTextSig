@@ -219,7 +219,11 @@ public class SignatureAssistant {
                 BouncyCastleProvider provider = new BouncyCastleProvider();
                 Security.addProvider(provider);
                 KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-                ks.load(keyStore, keyStorePassword);
+                try {
+                    ks.load(keyStore, keyStorePassword);
+                } catch(Exception e){
+                    return SignatureResponse.CERTIFICATE_KEY_ERROR;
+                }
                 String alias = ks.aliases().nextElement();
                 PrivateKey pk = (PrivateKey) ks.getKey(alias, keyStorePassword);
                 Certificate[] chain = ks.getCertificateChain(alias);
