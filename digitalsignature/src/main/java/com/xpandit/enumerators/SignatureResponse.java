@@ -15,7 +15,8 @@ public enum SignatureResponse {
     TSA_RESPONSE_ERROR(2),
     NOT_ENOUGH_SPACE(3),
     CONNECTION_ERROR(4),
-    CERTIFICATE_KEY_ERROR(5);
+    CERTIFICATE_KEY_ERROR(5),
+    TSA_CREDENTIALS_ERROR(6);
 
     private int position;
 
@@ -39,6 +40,8 @@ public enum SignatureResponse {
                 return CONNECTION_ERROR;
             case 5:
                 return CERTIFICATE_KEY_ERROR;
+            case 6:
+                return TSA_CREDENTIALS_ERROR;
             default:
                 break;
         }
@@ -61,6 +64,8 @@ public enum SignatureResponse {
                 return "Failure executing the signature. Connection error";
             case 5:
                 return "Failure executing the signature. Incorrect password/certificate combination";
+            case 6:
+                return "";
             default:
                 break;
         }
@@ -83,6 +88,8 @@ public enum SignatureResponse {
                 return "Failure executing the timestamp. Connection error";
             case 5:
                 return "";
+            case 6:
+                return "Failure executing the timestamp. Null credentials";
             default:
                 break;
         }
