@@ -221,7 +221,7 @@ public class SignatureAssistant {
                 KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
                 try {
                     ks.load(keyStore, keyStorePassword);
-                } catch(Exception e){
+                } catch (Exception e) {
                     return SignatureResponse.CERTIFICATE_KEY_ERROR;
                 }
                 String alias = ks.aliases().nextElement();
@@ -559,45 +559,49 @@ public class SignatureAssistant {
 
         @Override
         protected String doInBackground(byte[]... params) {
-            sdd.getSgn().setExternalDigest(data, null, sdd.getExternalSignature().getEncryptionAlgorithm());
-            byte[] encodedSig = sdd.getSgn().getEncodedPKCS7(sdd.getHash(), sdd.getCar(), sdd.getTsaClient(), sdd.getOcsp());
-            if (sdd.getEstimatedSize() < encodedSig.length) {
+            try {
+                sdd.getSgn().setExternalDigest(data, null, sdd.getExternalSignature().getEncryptionAlgorithm());
+                byte[] encodedSig = sdd.getSgn().getEncodedPKCS7(sdd.getHash(), sdd.getCar(), sdd.getTsaClient(), sdd.getOcsp());
+                if (sdd.getEstimatedSize() < encodedSig.length) {
+                    try {
+                        throw new IOException("Not enough space");
+                    } catch (IOException e) {
+                        Log.d(TAG, e.toString());
+                    }
+                } else {
+                    byte[] paddedSig = new byte[sdd.getEstimatedSize()];
+                    System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
+                    PdfDictionary dic2 = new PdfDictionary();
+                    dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
+                    try {
+                        if (sdd.getSap().isPreClosed()) {
+                            sdd.getSap().close(dic2);
+                        } else {
+                            sdd.getStamper().close();
+                        }
+                    } catch (IOException | DocumentException e) {
+                        Log.d(TAG, e.toString());
+                    }
+                }
                 try {
-                    throw new IOException("Not enough space");
+                    sdd.getOs().close();
+                    sdd.getReader().close();
                 } catch (IOException e) {
                     Log.d(TAG, e.toString());
                 }
-            } else {
-                byte[] paddedSig = new byte[sdd.getEstimatedSize()];
-                System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
-                PdfDictionary dic2 = new PdfDictionary();
-                dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
-                try {
-                    if (sdd.getSap().isPreClosed()) {
-                        sdd.getSap().close(dic2);
-                    } else {
-                        sdd.getStamper().close();
-                    }
-                } catch (IOException | DocumentException e) {
-                    Log.d(TAG, e.toString());
-                }
-            }
-            try {
-                sdd.getOs().close();
-                sdd.getReader().close();
-            } catch (IOException e) {
-                Log.d(TAG, e.toString());
+            } catch (Exception e) {
+                return "error";
             }
             return "success";
         }
 
         protected void onPostExecute(String result) {
-            if (result.equals("error")) {
-                sai.finishDigitalSignatureProcess("error");
-            } else {
-                Log.d(TAG, "Signing > Finished the sign detach async task");
+            if (result.equals("success")) {
                 sai.finishDigitalSignatureProcess("success");
+            } else {
+                sai.finishDigitalSignatureProcess("error");
             }
+            Log.d(TAG, "Signing > Finished the sign detach async task");
         }
 
     }
