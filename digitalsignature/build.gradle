@@ -23,4 +23,5 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+    classpath 'com.github.dcendents:android-maven-plugin:1.3'
 }
