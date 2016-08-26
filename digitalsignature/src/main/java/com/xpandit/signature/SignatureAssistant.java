@@ -352,7 +352,7 @@ public class SignatureAssistant {
 
                 FileOutputStream os = new FileOutputStream(fileDestination);
                 String tmp_path = fileDestination.replace(".pdf", "_tmp.pdf");
-                Log.i("debug", tmp_path);
+                Log.d("debug", tmp_path);
                 PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
 
                 // Creating the appearance
