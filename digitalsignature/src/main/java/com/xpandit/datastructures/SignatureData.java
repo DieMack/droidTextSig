@@ -1,5 +1,7 @@
 package com.xpandit.datastructures;
 
+import android.graphics.Bitmap;
+
 import java.io.Serializable;
 
 /**
@@ -24,6 +26,8 @@ public class SignatureData implements Serializable {
     private String author;
     private String reason;
     private String location;
+    private byte[] content;
+    private Bitmap signatureImage;
     // endregion
 
     // region Constructors
@@ -126,6 +130,22 @@ public class SignatureData implements Serializable {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public byte[] getContent() {
+        return content;
+    }
+
+    public void setContent(byte[] content) {
+        this.content = content;
+    }
+
+    public Bitmap getSignatureImage() {
+        return signatureImage;
+    }
+
+    public void setSignatureImage(Bitmap signatureImage) {
+        this.signatureImage = signatureImage;
     }
     // endregion
 

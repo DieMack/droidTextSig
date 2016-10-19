@@ -199,7 +199,6 @@ public class SignatureAssistant {
      * @param keyStorePassword - The Private key
      * @param tsaClient        - The Timestamp Client that is used to timestamp the operation. If null, the hour of the clock will be used
      * @param signatureData    - The Signature Data object that contains all relevant information regarding the signature
-     * @param signatureImage   - The Bitmap of the handwritten (or not) generated bitmap. If null, wont be included on the signature
      * @return
      */
     public static SignatureResponse signPdf(String fileSource,
@@ -207,8 +206,7 @@ public class SignatureAssistant {
                                             InputStream keyStore,
                                             char[] keyStorePassword,
                                             TSAClient tsaClient,
-                                            SignatureData signatureData,
-                                            Bitmap signatureImage) {
+                                            SignatureData signatureData) {
 
         boolean sameInOut = fileSource.equals(fileDestination);
         String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
@@ -237,9 +235,9 @@ public class SignatureAssistant {
                 PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
 
                 PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
-                if (signatureImage != null) {
+                if (signatureData.getSignatureImage() != null) {
                     ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                    signatureImage.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    signatureData.getSignatureImage().compress(Bitmap.CompressFormat.PNG, 100, stream);
                     Image image = Image.getInstance(stream.toByteArray());
                     appearance.setImage(image);
                 }
@@ -253,6 +251,7 @@ public class SignatureAssistant {
                 dic.setContact(signatureData.getAuthor());
                 dic.setLocation(signatureData.getLocation());
                 dic.setReason(signatureData.getReason());
+                dic.setContents(signatureData.getContent());
                 dic.setDate(new PdfDate());
                 appearance.setCryptoDictionary(dic);
 
