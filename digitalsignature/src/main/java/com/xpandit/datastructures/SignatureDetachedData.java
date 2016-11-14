@@ -22,7 +22,7 @@ public class SignatureDetachedData {
     // region Class variables
     private PdfPKCS7 sgn;
     private byte[] hash;
-    private Calendar car;
+    private Calendar calendar;
     private TSAClient tsaClient;
     private byte[] ocsp;
     private int estimatedSize;
@@ -57,12 +57,12 @@ public class SignatureDetachedData {
         this.hash = hash;
     }
 
-    public Calendar getCar() {
-        return car;
+    public Calendar getCalendar() {
+        return calendar;
     }
 
-    public void setCar(Calendar car) {
-        this.car = car;
+    public void setCalendar(Calendar calendar) {
+        this.calendar = calendar;
     }
 
     public TSAClient getTsaClient() {

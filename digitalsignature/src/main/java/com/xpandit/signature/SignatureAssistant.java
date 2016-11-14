@@ -13,6 +13,7 @@ import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.AcroFields;
 import com.lowagie.text.pdf.ColumnText;
 import com.lowagie.text.pdf.OcspClient;
+import com.lowagie.text.pdf.OcspClientBouncyCastle;
 import com.lowagie.text.pdf.PdfDate;
 import com.lowagie.text.pdf.PdfDictionary;
 import com.lowagie.text.pdf.PdfName;
@@ -58,6 +59,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -76,21 +78,20 @@ public class SignatureAssistant {
     private static String TAG = SignatureAssistant.class.getSimpleName();
     private static Font layer2Font_Bold = new Font(Font.HELVETICA, fontSize, Font.BOLD);
     private static Font layer2Font_Discrete = new Font(Font.HELVETICA, fontSize, Font.NORMAL);
-    private static SimpleDateFormat sdf_visibleSignature = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    private static SimpleDateFormat sdf_visibleSignature = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.GERMAN);
     private static SignatureDetachedData sdd = new SignatureDetachedData();
 
     /**
      * @param fileName - The pdf file that contains the signature fields
-     * @throws IOException
      * @returns the list of all the signature fields
      */
     public static ArrayList<String> getAllSignatureFieldNames(String fileName) {
         try {
             PdfReader reader = new PdfReader(fileName);
             AcroFields fields = reader.getAcroFields();
-            Set<String> fldNames = fields.getFields().keySet();
+            Set<String> fieldNames = fields.getFields().keySet();
             ArrayList<String> signatureFieldNames = new ArrayList<>();
-            for (String fldName : fldNames) {
+            for (String fldName : fieldNames) {
                 signatureFieldNames.add(fldName);
             }
             reader.close();
@@ -102,10 +103,9 @@ public class SignatureAssistant {
 
     /**
      * @param fileName - The file that contains the signature fields
-     * @throws IOException
      * @returns the list of all the unsigned signature fields
      */
-    public static ArrayList<String> getAllUnsignedSignatureFieldsNames(String fileName) throws IOException {
+    public static ArrayList<String> getAllUnsignedSignatureFieldsNames(String fileName) {
         try {
             PdfReader reader = new PdfReader(fileName);
             AcroFields fields = reader.getAcroFields();
@@ -122,10 +122,9 @@ public class SignatureAssistant {
 
     /**
      * @param fileName - The file that contains the signature fields
-     * @throws IOException
      * @returns the list of all the signed field names
      */
-    public static ArrayList<String> getAllSignedSignatureFieldNames(String fileName) throws IOException {
+    public static ArrayList<String> getAllSignedSignatureFieldNames(String fileName) {
         try {
             ArrayList<String> allSignatureFields = getAllSignatureFieldNames(fileName);
             ArrayList<String> blankSignatureFields = getAllUnsignedSignatureFieldsNames(fileName);
@@ -156,7 +155,7 @@ public class SignatureAssistant {
         ArrayList<SignatureData> signatureDataList = new ArrayList<>();
         PdfReader reader = new PdfReader(fileName);
         AcroFields form = reader.getAcroFields();
-        Set<String> fields = form.getFields().keySet();
+        Set fields = form.getFields().keySet();
         if (!fields.isEmpty()) {
             for (String signatureName : signatureNameList) {
                 switch (form.getFieldType(signatureName)) {
@@ -206,16 +205,23 @@ public class SignatureAssistant {
                                             InputStream keyStore,
                                             char[] keyStorePassword,
                                             TSAClient tsaClient,
+                                            OcspClientBouncyCastle OcspClient,
                                             SignatureData signatureData) {
-
-        boolean sameInOut = fileSource.equals(fileDestination);
-        String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
-
         try {
-            if (sameInOut) FileUtils.copyFile(fileSource, myDest);
+            // Before starting the procedure, confirm that the fileSource exists
+            // Check if the source file equals the destination file.
+            // If they are the same, copy the source to the source_tmp file
+            if (!FileUtils.fileExists(fileSource)) {
+                return SignatureResponse.FILE_NOT_EXIST;
+            }
+            boolean sameInOut = fileSource.equals(fileDestination);
+            String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
+            if (sameInOut) {
+                FileUtils.copyFile(fileSource, myDest);
+            }
             try {
-                BouncyCastleProvider provider = new BouncyCastleProvider();
-                Security.addProvider(provider);
+                // Combine the KeyStore and the KeyStorePassword into the Certificate chain
+                Security.addProvider(new BouncyCastleProvider());
                 KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
                 try {
                     ks.load(keyStore, keyStorePassword);
@@ -226,15 +232,24 @@ public class SignatureAssistant {
                 PrivateKey pk = (PrivateKey) ks.getKey(alias, keyStorePassword);
                 Certificate[] chain = ks.getCertificateChain(alias);
 
-                if (!FileUtils.fileExists(fileSource)) {
-                    return SignatureResponse.FILE_NOT_EXIST;
-                }
+                // Creating the PDF Signature that will contain the relevant signature information
+                PdfSignature dictionary = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("adbe.pkcs7.detached"));
+                dictionary.setContact(signatureData.getAuthor());
+                dictionary.setLocation(signatureData.getLocation());
+                dictionary.setReason(signatureData.getReason());
+                dictionary.setContents(signatureData.getContent());
+                dictionary.setDate(new PdfDate());
 
+                // Instantiate the PDFReader to operate with the file
+                // Create the Appearance from the PDFReader (through the Stamper)
                 PdfReader reader = new PdfReader(myDest);
                 FileOutputStream os = new FileOutputStream(String.format(fileDestination, 1));
-                PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
+                PdfSignatureAppearance appearance = PdfStamper.createSignature(reader, os, '\0', null, true).getSignatureAppearance();
 
-                PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
+                // Load the image inside the SignatureData into the Appearance (equal to the user hand-drawn signature)
+                // Setting the layers' text to empty so we don't have unnecessary text covering the signature
+                // Passing the keystore chain and the private key into the appearance
+                // Passing the signature information into the appearance
                 if (signatureData.getSignatureImage() != null) {
                     ByteArrayOutputStream stream = new ByteArrayOutputStream();
                     signatureData.getSignatureImage().compress(Bitmap.CompressFormat.PNG, 100, stream);
@@ -246,46 +261,45 @@ public class SignatureAssistant {
                 appearance.setAcro6Layers(true);
                 appearance.setVisibleSignature(signatureData.getSignatureName());
                 appearance.setCrypto(pk, chain, null, PdfSignatureAppearance.WINCER_SIGNED);
+                appearance.setCryptoDictionary(dictionary);
 
-                PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("adbe.pkcs7.detached"));
-                dic.setContact(signatureData.getAuthor());
-                dic.setLocation(signatureData.getLocation());
-                dic.setReason(signatureData.getReason());
-                dic.setContents(signatureData.getContent());
-                dic.setDate(new PdfDate());
-                appearance.setCryptoDictionary(dic);
-
+                // Reserve space for the signature content
+                // - Before closing the appearance, we need to estimate the length of the signature
                 int contentEstimated = 15000;
                 HashMap<PdfName, Integer> exc = new HashMap<>();
                 exc.put(PdfName.CONTENTS, contentEstimated * 2 + 2);
                 appearance.preClose(exc);
 
-                InputStream data = appearance.getRangeStream();
+                // - Create a message digest to 'digest' the appearance input stream
+                // - Obtaining the appearance range stream as an input stream
+                // - Digest the signature appearance into the byte[]
                 MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
-
-                byte[] hash = digest(data, messageDigest);
+                InputStream data = appearance.getRangeStream();
+                byte[] hash = digest(8192, data, messageDigest);
+                byte[] ocsp = OcspClient != null ? OcspClient.getEncoded() : null;
                 Calendar cal = Calendar.getInstance();
-                byte[] ocsp = null;
-                PdfPKCS7 sgn = new PdfPKCS7(pk, chain, null, "SHA1", null, false);
-                byte sh[] = sgn.getAuthenticatedAttributeBytes(hash, cal, ocsp);
 
-                // breaking point
+                // Create the signed hash for the signature and update it with the Authenticated Attributes
+                PdfPKCS7 sgn = new PdfPKCS7(pk, chain, null, "SHA1", null, false);
+                byte[] sh = sgn.getAuthenticatedAttributeBytes(hash, cal, ocsp);
                 sgn.update(sh, 0, sh.length);
                 byte[] encodedSig;
                 try {
                     encodedSig = sgn.getEncodedPKCS7(hash, cal, tsaClient, ocsp);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    return SignatureResponse.TSA_RESPONSE_ERROR;
+                    return SignatureResponse.FAILURE;
                 }
                 if (encodedSig != null && (contentEstimated + 2 < encodedSig.length)) {
                     return SignatureResponse.NOT_ENOUGH_SPACE;
                 }
                 byte[] paddedSig = new byte[contentEstimated];
-                System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
-                PdfDictionary dic2 = new PdfDictionary();
-                dic2.put(PdfName.CONTENTS, new PdfString(paddedSig).setHexWriting(true));
-                appearance.close(dic2);
+                if (encodedSig != null) {
+                    System.arraycopy(encodedSig, 0, paddedSig, 0, encodedSig.length);
+                }
+                // Add signature content and close the appearance
+                PdfDictionary dictionary2 = new PdfDictionary();
+                dictionary2.put(PdfName.CONTENTS, new PdfString(paddedSig).setHexWriting(true));
+                appearance.close(dictionary2);
             } catch (Exception e) {
                 e.printStackTrace();
                 if (sameInOut) {
@@ -294,7 +308,10 @@ public class SignatureAssistant {
                 }
                 return SignatureResponse.FAILURE;
             }
-            if (sameInOut) FileUtils.deleteFile(myDest);
+            // After signing the source file, delete the
+            if (sameInOut) {
+                FileUtils.deleteFile(myDest);
+            }
             return SignatureResponse.SUCCESS;
         } catch (IOException e) {
             e.printStackTrace();
@@ -330,16 +347,23 @@ public class SignatureAssistant {
                                                       Image img,
                                                       SignatureUtils.MyExternalSignature eid,
                                                       SignatureUtils.MyExternalDigest digest) throws GeneralSecurityException, IOException, DocumentException {
-        boolean sameInOut = fileSource.equals(fileDestination);
-        String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
         try {
-            if (sameInOut) FileUtils.copyFile(fileSource, myDest);
+            // Before starting the procedure, confirm that the fileSource exists
+            // Check if the source file equals the destination file.
+            // If they are the same, copy the source to the source_tmp file
+            if (!FileUtils.fileExists(fileSource)) {
+                return null;
+            }
+            boolean sameInOut = fileSource.equals(fileDestination);
+            String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
+            if (sameInOut) {
+                FileUtils.copyFile(fileSource, myDest);
+            }
             try {
                 X500Name x500name = new JcaX509CertificateHolder((X509Certificate) certChain[0]).getSubject();
                 RDN cn = x500name.getRDNs(BCStyle.CN)[0];
                 String cnStr = IETFUtils.valueToString(cn.getFirst().getValue());
                 RDN serialNumber = x500name.getRDNs(BCStyle.SERIALNUMBER)[0];
-
                 String serialNumberStr = IETFUtils.valueToString(serialNumber.getFirst().getValue());
                 img.setAbsolutePosition(0, 0);
 
@@ -374,6 +398,7 @@ public class SignatureAssistant {
                 signatureBlockContainer.setSpacingBefore(0);
                 signatureBlockContainer.setWidthPercentage(100);
 
+                // ------------------------------------------------------------------------------- //
                 // FIRST BLOCK
                 // Creating the Cell to accommodate the signature holder name
                 PdfPCell firstBlock = new PdfPCell();
@@ -410,6 +435,7 @@ public class SignatureAssistant {
                 firstBlock.addElement(firstBlockName);
                 signatureBlockContainer.addCell(firstBlock);
 
+                // ------------------------------------------------------------------------------- //
                 // SECOND BLOCK
                 // Creating the Cell to accommodate the signature's holder card number and date
                 PdfPCell secondBlock = new PdfPCell();
@@ -450,7 +476,6 @@ public class SignatureAssistant {
                 int height = 60;
                 int width = 92;
                 n2.addImage(img, width, 0, 0, (height / 3), n2.getWidth() - width, 0.5F, true);
-
                 return signDetached(appearance, digest, eid, certChain, ocspClient, tsaClient, estimatedSize, reader, os, stamper);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -483,53 +508,59 @@ public class SignatureAssistant {
                                                      int estimatedSize,
                                                      PdfReader reader,
                                                      FileOutputStream os,
-                                                     PdfStamper stamper) throws IOException, DocumentException, GeneralSecurityException {
-        if (estimatedSize == 0) {
-            estimatedSize = 8192;
-            if (ocspClient != null) {
-                estimatedSize += 4192;
+                                                     PdfStamper stamper) {
+        try {
+            // Calculating the estimated size
+            if (estimatedSize == 0) {
+                estimatedSize = 8192;
+                estimatedSize = ocspClient != null ? estimatedSize + 4192 : estimatedSize;
+                estimatedSize = tsaClient != null ? estimatedSize + 4192 : estimatedSize;
             }
-            if (tsaClient != null) {
-                estimatedSize += 4192;
+            // Creating the PDF Signature that will contain the relevant signature information
+            PdfSignature dictionary = new PdfSignature(PdfName.ADOBE_PPKLITE, PdfName.ADBE_PKCS7_DETACHED);
+            dictionary.setReason(sap.getReason());
+            dictionary.setLocation(sap.getLocation());
+            dictionary.setContact(sap.getContact());
+            dictionary.setDate(new PdfDate(sap.getSignDate()));
+            sap.setCryptoDictionary(dictionary);
+
+            // Reserve space for the signature content
+            // Before closing the appearance, we need to estimate the length of the signature
+            HashMap<PdfName, Integer> var25 = new HashMap<>();
+            var25.put(PdfName.CONTENTS, estimatedSize * 2 + 2);
+            sap.preClose(var25);
+
+            // Create the signed hash for the signature and update it with the Authenticated Attributes
+            String hashAlgorithm = externalSignature.getHashAlgorithm();
+            PdfPKCS7 sgn = new PdfPKCS7(null, chain, null, hashAlgorithm, null, false);
+            InputStream data = sap.getRangeStream();
+            byte[] hash = DigestAlgorithms.digest(data, myExternalDigest.getMessageDigest(hashAlgorithm));
+
+            // Creating the calendar
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(new Date());
+
+            byte[] ocsp = null;
+            if (chain.length >= 2 && ocspClient != null) {
+                ocsp = ocspClient.getEncoded();
             }
+            sdd.setHash(hash);
+            sdd.setCalendar(calendar);
+            sdd.setTsaClient(tsaClient);
+            sdd.setOcsp(ocsp);
+            sdd.setEstimatedSize(estimatedSize);
+            sdd.setSgn(sgn);
+            sdd.setSap(sap);
+            sdd.setExternalSignature(externalSignature);
+            sdd.setReader(reader);
+            sdd.setOs(os);
+            sdd.setStamper(stamper);
+            byte[] sh = sgn.getAuthenticatedAttributeBytes(hash, calendar, ocsp);
+            sdd.setAuthenticatedAttributeBytes(sh);
+            return sdd;
+        } catch (Exception e) {
+            return null;
         }
-        PdfSignature var24 = new PdfSignature(PdfName.ADOBE_PPKLITE, PdfName.ADBE_PKCS7_DETACHED);
-        var24.setReason(sap.getReason());
-        var24.setLocation(sap.getLocation());
-        var24.setContact(sap.getContact());
-        var24.setDate(new PdfDate(sap.getSignDate()));
-        sap.setCryptoDictionary(var24);
-        HashMap var25 = new HashMap();
-        var25.put(PdfName.CONTENTS, estimatedSize * 2 + 2);
-        sap.preClose(var25);
-        String hashAlgorithm = externalSignature.getHashAlgorithm();
-        PdfPKCS7 sgn = new PdfPKCS7(null, chain, null, hashAlgorithm, null, false);
-        InputStream data = sap.getRangeStream();
-        byte[] hash = DigestAlgorithms.digest(data, myExternalDigest.getMessageDigest(hashAlgorithm));
-
-        Date date = new Date();
-        Calendar car = Calendar.getInstance();
-        car.setTime(date);
-
-        byte[] ocsp = null;
-        if (chain.length >= 2 && ocspClient != null) {
-            ocsp = ocspClient.getEncoded();
-        }
-        sdd.setHash(hash);
-        sdd.setCar(car);
-        sdd.setTsaClient(tsaClient);
-        sdd.setOcsp(ocsp);
-        sdd.setEstimatedSize(estimatedSize);
-        sdd.setSgn(sgn);
-        sdd.setSap(sap);
-        sdd.setCar(car);
-        sdd.setExternalSignature(externalSignature);
-        sdd.setReader(reader);
-        sdd.setOs(os);
-        sdd.setStamper(stamper);
-        byte[] sh = sgn.getAuthenticatedAttributeBytes(hash, car, ocsp);
-        sdd.setAuthenticatedAttributeBytes(sh);
-        return sdd;
     }
 
     /**
@@ -540,6 +571,95 @@ public class SignatureAssistant {
      */
     public static void signDetachedFinish(byte[] data, SignatureAssistantInterface sai) {
         new signDetachedFinish(data, sai).execute();
+    }
+
+    /**
+     * @param fileSource      - The input file used that is going to be timestamped
+     * @param fileDestination - The output file of the timestamping operation
+     * @param tsaRequest      - The request that contains the Timestamping credentials and variables
+     * @param signatureName   - The signature name (optional). If null, will attach the LTV timestamp to the document
+     */
+    public static SignatureResponse timestampPdf(String fileSource, String fileDestination, TSARequest tsaRequest, String signatureName) {
+        try {
+            // Before starting the procedure, confirm that the fileSource exists
+            // Check if the source file equals the destination file.
+            // If they are the same, copy the source to the source_tmp file
+            if (!FileUtils.fileExists(fileSource)) {
+                return SignatureResponse.FILE_NOT_EXIST;
+            }
+            boolean sameInOut = fileSource.equals(fileDestination);
+            String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
+            if (sameInOut) {
+                FileUtils.copyFile(fileSource, myDest);
+            }
+            try {
+                // Creating the PDF Signature that will contain the relevant signature information
+                PdfSignature dictionary = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
+                dictionary.put(PdfName.TYPE, new PdfName("DocTimeStamp"));
+
+                // Instantiate the PDFReader to operate with the file
+                // Create the Appearance from the PDFReader (through the Stamper)
+                // Passing the signature information into the appearance
+                PdfReader reader = new PdfReader(myDest);
+                FileOutputStream os = new FileOutputStream(fileDestination);
+                PdfSignatureAppearance appearance = PdfStamper.createSignature(reader, os, '\0', null, true).getSignatureAppearance();
+                appearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
+                appearance.setCryptoDictionary(dictionary);
+
+                // Reserve space for the signature content
+                // Before closing the appearance, we need to estimate the length of the signature
+                int contentEstimated = tsaRequest.getTokenSizeEstimate();
+                HashMap<PdfName, Integer> exc = new HashMap<>();
+                exc.put(PdfName.CONTENTS, contentEstimated * 2 + 2);
+                appearance.preClose(exc);
+
+                // Create a message digest to 'digest' the appearance input stream
+                // Obtaining the appearance range stream as an input stream
+                // Digest the signature appearance into the byte[]
+                InputStream stream = appearance.getRangeStream();
+                MessageDigest messageDigest = tsaRequest.getMessageDigest();
+                byte[] tsImprint = digest(4096, stream, messageDigest);
+                byte[] tsToken;
+                try {
+                    tsToken = tsaRequest.getTimeStampToken(tsImprint);
+                } catch (Exception var14) {
+                    throw new GeneralSecurityException(var14);
+                }
+                if (contentEstimated + 2 < tsToken.length) {
+                    return SignatureResponse.NOT_ENOUGH_SPACE;
+                } else {
+                    byte[] paddedSig = new byte[contentEstimated];
+                    System.arraycopy(tsToken, 0, paddedSig, 0, tsToken.length);
+                    // Add signature content and close the appearance
+                    PdfDictionary dictionary2 = new PdfDictionary();
+                    dictionary2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
+                    appearance.close(dictionary2);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (sameInOut) {
+                    FileUtils.deleteFile(fileSource);
+                    FileUtils.renameFile(myDest, fileSource);
+                }
+                return SignatureResponse.TSA_RESPONSE_ERROR;
+            }
+            if (sameInOut) {
+                FileUtils.deleteFile(myDest);
+            }
+            return SignatureResponse.SUCCESS;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return SignatureResponse.TSA_RESPONSE_ERROR;
+        }
+    }
+
+    public static byte[] digest(int byteArraySize, InputStream data, MessageDigest messageDigest) throws GeneralSecurityException, IOException {
+        byte[] buf = new byte[byteArraySize];
+        int n;
+        while ((n = data.read(buf)) > 0) {
+            messageDigest.update(buf, 0, n);
+        }
+        return messageDigest.digest();
     }
 
     public static class signDetachedFinish extends AsyncTask<byte[], String, String> {
@@ -560,7 +680,7 @@ public class SignatureAssistant {
         protected String doInBackground(byte[]... params) {
             try {
                 sdd.getSgn().setExternalDigest(data, null, sdd.getExternalSignature().getEncryptionAlgorithm());
-                byte[] encodedSig = sdd.getSgn().getEncodedPKCS7(sdd.getHash(), sdd.getCar(), sdd.getTsaClient(), sdd.getOcsp());
+                byte[] encodedSig = sdd.getSgn().getEncodedPKCS7(sdd.getHash(), sdd.getCalendar(), sdd.getTsaClient(), sdd.getOcsp());
                 if (sdd.getEstimatedSize() < encodedSig.length) {
                     try {
                         throw new IOException("Not enough space");
@@ -604,80 +724,4 @@ public class SignatureAssistant {
         }
 
     }
-
-    /**
-     * @param fileSource      - The input file used that is going to be timestamped
-     * @param fileDestination - The output file of the timestamping operation
-     * @param tsaRequest      - The request that contains the Timestamping credentials and variables
-     * @param signatureName   - The signature name (optional). If null, will attach the LTV timestamp to the document
-     * @throws IOException
-     * @throws DocumentException
-     * @throws GeneralSecurityException
-     */
-    public static SignatureResponse timestampPdf(String fileSource, String fileDestination, TSARequest tsaRequest, String signatureName) {
-        boolean sameInOut = fileSource.equals(fileDestination);
-        String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
-        try {
-            if (sameInOut) FileUtils.copyFile(fileSource, myDest);
-            try {
-                PdfReader r = new PdfReader(myDest);
-                FileOutputStream fos = new FileOutputStream(fileDestination);
-                PdfStamper stp = PdfStamper.createSignature(r, fos, '\0', null, true);
-                PdfSignatureAppearance sigAppearance = stp.getSignatureAppearance();
-                int contentEstimated = tsaRequest.getTokenSizeEstimate();
-                sigAppearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
-                PdfSignature dic = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
-                dic.put(PdfName.TYPE, new PdfName("DocTimeStamp"));
-                sigAppearance.setCryptoDictionary(dic);
-                HashMap exc = new HashMap();
-                exc.put(PdfName.CONTENTS, new Integer(contentEstimated * 2 + 2));
-                sigAppearance.preClose(exc);
-                InputStream stream = sigAppearance.getRangeStream();
-                MessageDigest messageDigest = tsaRequest.getMessageDigest();
-                byte[] buf = new byte[4096];
-                int n;
-                while ((n = stream.read(buf)) > 0) {
-                    messageDigest.update(buf, 0, n);
-                }
-                byte[] tsImprint = messageDigest.digest();
-                byte[] tsToken;
-                try {
-                    tsToken = tsaRequest.getTimeStampToken(tsImprint);
-                } catch (Exception var14) {
-                    throw new GeneralSecurityException(var14);
-                }
-                if (contentEstimated + 2 < tsToken.length) {
-                    return SignatureResponse.NOT_ENOUGH_SPACE;
-                } else {
-                    byte[] paddedSig = new byte[contentEstimated];
-                    System.arraycopy(tsToken, 0, paddedSig, 0, tsToken.length);
-                    PdfDictionary dic2 = new PdfDictionary();
-                    dic2.put(PdfName.CONTENTS, (new PdfString(paddedSig)).setHexWriting(true));
-                    sigAppearance.close(dic2);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                if (sameInOut) {
-                    FileUtils.deleteFile(fileSource);
-                    FileUtils.renameFile(myDest, fileSource);
-                }
-                return SignatureResponse.TSA_RESPONSE_ERROR;
-            }
-            if (sameInOut) FileUtils.deleteFile(myDest);
-            return SignatureResponse.SUCCESS;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return SignatureResponse.TSA_RESPONSE_ERROR;
-        }
-    }
-
-    public static byte[] digest(InputStream data, MessageDigest messageDigest) throws GeneralSecurityException, IOException {
-        byte[] buf = new byte[8192];
-        int n;
-        while ((n = data.read(buf)) > 0) {
-            messageDigest.update(buf, 0, n);
-        }
-        return messageDigest.digest();
-    }
-
 }

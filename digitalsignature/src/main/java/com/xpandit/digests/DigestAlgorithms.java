@@ -23,9 +23,9 @@ public class DigestAlgorithms {
     public static final String SHA384 = "SHA-384";
     public static final String SHA512 = "SHA-512";
     public static final String RIPEMD160 = "RIPEMD160";
-    private static final HashMap<String, String> digestNames = new HashMap();
-    private static final HashMap<String, String> fixNames = new HashMap();
-    private static final HashMap<String, String> allowedDigests = new HashMap();
+    private static final HashMap<String, String> digestNames = new HashMap<>();
+    private static final HashMap<String, String> fixNames = new HashMap<>();
+    private static final HashMap<String, String> allowedDigests = new HashMap<>();
     // endregion
 
     // region Constructors
@@ -59,7 +59,7 @@ public class DigestAlgorithms {
     }
 
     public static String getDigest(String oid) {
-        String ret = (String) digestNames.get(oid);
+        String ret = digestNames.get(oid);
         return ret == null ? oid : ret;
     }
 
@@ -68,7 +68,7 @@ public class DigestAlgorithms {
     }
 
     public static String getAllowedDigests(String name) {
-        return (String) allowedDigests.get(name.toUpperCase());
+        return allowedDigests.get(name.toUpperCase());
     }
 
     static {
