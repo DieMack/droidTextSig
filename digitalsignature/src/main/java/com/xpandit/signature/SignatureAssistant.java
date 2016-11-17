@@ -128,9 +128,9 @@ public class SignatureAssistant {
         try {
             ArrayList<String> allSignatureFields = getAllSignatureFieldNames(fileName);
             ArrayList<String> blankSignatureFields = getAllUnsignedSignatureFieldsNames(fileName);
-            if (blankSignatureFields == null)
+            if (blankSignatureFields == null) {
                 return allSignatureFields;
-            else {
+            } else {
                 for (String s : blankSignatureFields) {
                     if (allSignatureFields != null && allSignatureFields.contains(s)) {
                         allSignatureFields.remove(s);
@@ -237,12 +237,26 @@ public class SignatureAssistant {
                 dictionary.setContact(signatureData.getAuthor());
                 dictionary.setLocation(signatureData.getLocation());
                 dictionary.setReason(signatureData.getReason());
-                dictionary.setContents(signatureData.getContent());
                 dictionary.setDate(new PdfDate());
+                PdfReader reader;
+                //Add signature byte contents as additional info
+                if (signatureData.getContent() != null) {
+                    reader = new PdfReader(myDest);
+                    PdfStamper stamper = new PdfStamper(reader,
+                            new FileOutputStream(myDest + "t"), '\0', true);
+                    //noinspection unchecked
+                    HashMap info = reader.getInfo();
+                    info.put(signatureData.getSignatureName(), new String(signatureData.getContent(), "UTF-8"));
+                    stamper.setMoreInfo(info);
+                    stamper.close();
+                    reader.close();
+                    FileUtils.deleteFile(myDest);
+                    FileUtils.renameFile(myDest + "t", myDest);
+                }
 
                 // Instantiate the PDFReader to operate with the file
                 // Create the Appearance from the PDFReader (through the Stamper)
-                PdfReader reader = new PdfReader(myDest);
+                reader = new PdfReader(myDest);
                 FileOutputStream os = new FileOutputStream(String.format(fileDestination, 1));
                 PdfSignatureAppearance appearance = PdfStamper.createSignature(reader, os, '\0', null, true).getSignatureAppearance();
 
