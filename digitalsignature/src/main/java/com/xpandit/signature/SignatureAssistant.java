@@ -601,11 +601,8 @@ public class SignatureAssistant {
             if (!FileUtils.fileExists(fileSource)) {
                 return SignatureResponse.FILE_NOT_EXIST;
             }
-            boolean sameInOut = fileSource.equals(fileDestination);
-            String myDest = sameInOut ? fileSource + "_tmp" : fileSource;
-            if (sameInOut) {
-                FileUtils.copyFile(fileSource, myDest);
-            }
+            String backupFile = fileSource + "_backup";
+            FileUtils.copyFile(fileSource, backupFile);
             try {
                 // Creating the PDF Signature that will contain the relevant signature information
                 PdfSignature dictionary = new PdfSignature(PdfName.ADOBE_PPKLITE, new PdfName("ETSI.RFC3161"));
@@ -614,7 +611,7 @@ public class SignatureAssistant {
                 // Instantiate the PDFReader to operate with the file
                 // Create the Appearance from the PDFReader (through the Stamper)
                 // Passing the signature information into the appearance
-                PdfReader reader = new PdfReader(myDest);
+                PdfReader reader = new PdfReader(fileSource);
                 FileOutputStream os = new FileOutputStream(fileDestination);
                 PdfSignatureAppearance appearance = PdfStamper.createSignature(reader, os, '\0', null, true).getSignatureAppearance();
                 appearance.setVisibleSignature(new Rectangle(0.0F, 0.0F, 0.0F, 0.0F), 1, signatureName);
@@ -635,7 +632,7 @@ public class SignatureAssistant {
                 byte[] tsImprint = digest(4096, stream, messageDigest);
                 byte[] tsToken;
                 try {
-                    tsToken = tsaRequest.getTimeStampToken(tsImprint);
+                     tsToken = tsaRequest.getTimeStampToken(tsImprint);
                 } catch (Exception var14) {
                     throw new GeneralSecurityException(var14);
                 }
@@ -651,15 +648,12 @@ public class SignatureAssistant {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                if (sameInOut) {
-                    FileUtils.deleteFile(fileSource);
-                    FileUtils.renameFile(myDest, fileSource);
-                }
+                FileUtils.deleteFile(fileDestination);
+                FileUtils.deleteFile(fileSource);
+                FileUtils.renameFile(backupFile, fileSource);
                 return SignatureResponse.TSA_RESPONSE_ERROR;
             }
-            if (sameInOut) {
-                FileUtils.deleteFile(myDest);
-            }
+            FileUtils.deleteFile(backupFile);
             return SignatureResponse.SUCCESS;
         } catch (IOException e) {
             e.printStackTrace();
