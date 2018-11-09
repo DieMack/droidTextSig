@@ -1,4 +1,4 @@
-package com.xpandit.digests;
+package rjsvieira.digitalsignature.digests;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 

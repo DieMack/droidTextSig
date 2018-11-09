@@ -1,9 +1,9 @@
-package com.xpandit.signature;
+package rjsvieira.digitalsignature.signature;
 
 /**
  * Description
  *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @author <a href="mailto:rvfts@hotmail.com">RJSV</a>
  * @version $Revision : 1 $
  */
 

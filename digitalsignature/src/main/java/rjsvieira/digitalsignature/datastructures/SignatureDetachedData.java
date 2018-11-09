@@ -1,19 +1,20 @@
-package com.xpandit.datastructures;
+package rjsvieira.digitalsignature.datastructures;
 
 import com.lowagie.text.pdf.PdfPKCS7;
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.PdfSignatureAppearance;
 import com.lowagie.text.pdf.PdfStamper;
 import com.lowagie.text.pdf.TSAClient;
-import com.xpandit.utils.SignatureUtils;
 
 import java.io.FileOutputStream;
 import java.util.Calendar;
 
+import rjsvieira.digitalsignature.utils.SignatureUtils;
+
 /**
  * Description
  *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @author <a href="mailto:rvfts@hotmail.com">RJSV</a>
  * @version $Revision : 1 $
  */
 
