@@ -1,4 +1,4 @@
-package com.xpandit.signature;
+package rjsvieira.digitalsignature.signature;
 
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
@@ -27,13 +27,6 @@ import com.lowagie.text.pdf.PdfStamper;
 import com.lowagie.text.pdf.PdfString;
 import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.TSAClient;
-import com.xpandit.datastructures.SignatureData;
-import com.xpandit.datastructures.SignatureDetachedData;
-import com.xpandit.digests.DigestAlgorithms;
-import com.xpandit.enumerators.SignatureResponse;
-import com.xpandit.utils.FileUtils;
-import com.xpandit.utils.SignatureUtils;
-import com.xpandit.utils.TSARequest;
 
 import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -62,10 +55,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import rjsvieira.digitalsignature.datastructures.SignatureData;
+import rjsvieira.digitalsignature.datastructures.SignatureDetachedData;
+import rjsvieira.digitalsignature.digests.DigestAlgorithms;
+import rjsvieira.digitalsignature.enumerators.SignatureResponse;
+import rjsvieira.digitalsignature.utils.FileUtils;
+import rjsvieira.digitalsignature.utils.SignatureUtils;
+import rjsvieira.digitalsignature.utils.TSARequest;
+
 /**
  * Description
  *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @author <a href="mailto:rvfts@hotmail.com">RJSV</a>
  * @version $Revision : 1 $
  */
 

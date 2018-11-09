@@ -1,4 +1,4 @@
-package com.xpandit.digests;
+package rjsvieira.digitalsignature.digests;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,7 +11,7 @@ import java.util.HashMap;
 /**
  * Description
  *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @author <a href="mailto:rvfts@hotmail.com">RJSV</a>
  * @version $Revision : 1 $
  */
 

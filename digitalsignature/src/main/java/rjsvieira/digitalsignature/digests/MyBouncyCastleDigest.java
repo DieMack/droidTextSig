@@ -1,6 +1,5 @@
-package com.xpandit.digests;
+package rjsvieira.digitalsignature.digests;
 
-import com.xpandit.utils.SignatureUtils;
 
 import org.spongycastle.jcajce.provider.digest.MD2;
 
@@ -8,10 +7,12 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import rjsvieira.digitalsignature.utils.SignatureUtils;
+
 /**
  * Description
  *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @author <a href="mailto:rvfts@hotmail.com">RJSV</a>
  * @version $Revision : 1 $
  */
 

@@ -1,4 +1,4 @@
-package com.xpandit.datastructures;
+package rjsvieira.digitalsignature.datastructures;
 
 import android.graphics.Bitmap;
 
@@ -7,7 +7,7 @@ import java.io.Serializable;
 /**
  * Description
  *
- * @author <a href="mailto:ricardo.vieira@xpand-it.com">RJSV</a>
+ * @author <a href="mailto:rvfts@hotmail.com">RJSV</a>
  * @version $Revision : 1 $
  */
 
