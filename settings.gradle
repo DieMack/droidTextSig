@@ -1,1 +1,1 @@
-include ':digitalsignature'
+include ':sample', ':digitalsignature'
